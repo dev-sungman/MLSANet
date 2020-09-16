@@ -11,7 +11,7 @@ def parse_arguments(argv):
     parser.add_argument('--gpu_idx', type=str, default='0')
 
     parser.add_argument('--batch_size', type=int, default=8)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--w', type=int, default=16)
     
     parser.add_argument('--log_dir', type=str, default="runs")

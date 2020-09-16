@@ -93,9 +93,9 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
     
     model.train()
-    
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1, 5, 10], gamma=0.1) 
+    #scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1, 5, 10], gamma=args.lr) 
+    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
     correct = 0
     total = 0
     
@@ -137,7 +137,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
 
-            overall_loss = change_loss + orth_loss*0.4 + disease_loss
+            overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -150,7 +150,9 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             scheduler.step()
             
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
-                print('Epoch: {:2d}, Iter : {:5d}, Cls loss: {:5f}, Orth loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, iter_, running_change/iter_, running_orth/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
+                for param_group in optimizer.param_groups:
+                    lr = param_group['lr']
+                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Orth loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_orth/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
                 writer.add_scalar('change_loss', running_change/iter_, overall_iter)
                 writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
@@ -172,7 +174,7 @@ def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter
     img_dir = os.path.join(log_dir, 'imgs')
     
     with torch.no_grad():
-        for base, fu, labels in iter(data_loader):
+        for base, fu, labels, _ in iter(data_loader):
             base = base.to(device)
             fu = fu.to(device)
             labels = labels.to(device)

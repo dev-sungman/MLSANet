@@ -35,7 +35,7 @@ class ClassPairDataset(Dataset):
             self.samples = self._make_dataset(mode)
             with open(json_name, "w") as f:
                 json.dump(self.samples, f)
-
+        
         if mode == 'train':
             self.transform = transforms.Compose([
                 transforms.Resize(580),
@@ -119,13 +119,12 @@ class ClassPairDataset(Dataset):
                             else:
                                 missing_pair_cnt += 1 
         else:
-            categories = os.listdir(self.input_path)
-
             samples = {'imgs':[], 'change_labels':[], 'disease_labels':[]}
             
-            other_label_cnt = 0
             missing_pair_cnt = 0
+            t_iter = 0
 
+            categories = os.listdir(self.input_path)
             for category in categories:
                 change_label = 1 if category.split('_')[-1]=='nochange' else 0
                 
@@ -152,23 +151,11 @@ class ClassPairDataset(Dataset):
                                 
                                 pairs =[file_path, pair_path]
 
-                                disease_label = []
-                                for pair in pairs:
-                                    search_id = pair.split('/')[-1].split('.')[0]
-                                    _label = self._find_disease_label(search_id)
-                                    if _label > 1:
-                                        other_label_cnt += 1
-                                        break
-                                    else:
-                                        disease_label.append(_label)
-
-                                if len(disease_label) > 0:
-                                    samples['imgs'].append(pairs)
-                                    samples['change_labels'].append(change_label)
-                                    samples['disease_labels'].append([0,0])
+                                samples['imgs'].append(pairs)
+                                samples['change_labels'].append(change_label)
+                                samples['disease_labels'].append([0,0])
                             else:
                                 missing_pair_cnt += 1 
-
 
         return samples
 
