@@ -148,6 +148,9 @@ class ResNet(nn.Module):
         self.acm2 = ACMBlock(in_channels=128*4)
         self.acm3 = ACMBlock(in_channels=256*4)
         self.acm4 = ACMBlock(in_channels=512*4)
+
+        self.vis_final1 = nn.ReLU(inplace=True)
+        self.vis_final2 = nn.ReLU(inplace=True)
         
         self.change_linear = nn.Linear(1024, 2)
         self.disease_linear = nn.Linear(512, 2)
@@ -184,13 +187,6 @@ class ResNet(nn.Module):
                                 norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
-
-    def apply_attention(self, x, k, q, cw):
-        k = k.view(k.shape[0], k.shape[1], 1, 1)
-        q = q.view(q.shape[0], q.shape[1], 1, 1)
-        att = x + k + q
-        out = att * cw
-        return att*cw
     
     def _forward_impl(self, x1, x2):
         # See note [TorchScript super()]
@@ -219,6 +215,9 @@ class ResNet(nn.Module):
         x1 = self.layer4(x1)
         x2 = self.layer4(x2)
         x1, x2, orth_loss4 = self.acm4(x1, x2)
+
+        x1 = self.vis_final1(x1)
+        x2 = self.vis_final2(x2)
         
         x1 = self.avgpool(x1)
         x2 = self.avgpool(x2)

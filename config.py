@@ -10,8 +10,8 @@ def parse_arguments(argv):
     parser.add_argument('--epochs', type=int, default=1000, help="number of epochs")
     parser.add_argument('--gpu_idx', type=str, default='0')
 
-    parser.add_argument('--batch_size', type=int, default=40)
-    parser.add_argument('--lr', type=float, default=0.05)
+    parser.add_argument('--batch_size', type=int, default=20)
+    parser.add_argument('--lr', type=float, default=0.03)
     parser.add_argument('--w', type=int, default=16)
     
     parser.add_argument('--log_dir', type=str, default="runs")

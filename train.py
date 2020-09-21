@@ -30,7 +30,7 @@ def register_forward_hook(model):
             activation[name] = output.detach()
         return hook
     
-    layer_names = ['k_conv1', 'q_conv1', 'k_conv2', 'q_conv2', 'k_conv3', 'q_conv3', 'k_conv4', 'q_conv4']
+    layer_names = ['k_conv1', 'q_conv1', 'k_conv2', 'q_conv2', 'k_conv3', 'q_conv3', 'k_conv4', 'q_conv4', 'vis1', 'vis2']
     model.acm1.k_conv.register_forward_hook(get_activation(layer_names[0]))
     model.acm1.q_conv.register_forward_hook(get_activation(layer_names[1]))
     model.acm2.k_conv.register_forward_hook(get_activation(layer_names[2]))
@@ -39,6 +39,8 @@ def register_forward_hook(model):
     model.acm3.q_conv.register_forward_hook(get_activation(layer_names[5]))
     model.acm4.k_conv.register_forward_hook(get_activation(layer_names[6]))
     model.acm4.q_conv.register_forward_hook(get_activation(layer_names[7]))
+    model.vis_final1.register_forward_hook(get_activation(layer_names[8]))
+    model.vis_final2.register_forward_hook(get_activation(layer_names[9]))
     
     return activation, layer_names
 
@@ -65,11 +67,12 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
     num_layers = len(layer_names)
     normalize = nn.Softmax(dim=2)
 
+    visual_num = 8
+
     for layer in layer_names:
         act = activation[layer].squeeze()
         
         b, c, h, w = act.shape
-        
         act = torch.mean(act, dim=1)
         act = act.view(b, 1, h*w)
         act = normalize(act)
@@ -77,10 +80,10 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 
         acts.append(act)
 
-    fig, axarr = plt.subplots(len(layer_names), acts[0].shape[0], figsize=(60,40))
+    fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(60,40))
     
     for ia, act in enumerate(acts): # 6
-        for batch in range(5): #batch
+        for batch in range(visual_num): #batch
             axarr[ia, batch].imshow(act[batch,:,:].cpu().detach().numpy())
 
             axarr[ia, batch].set_title('{}_{}'.format(layer_names[ia],batch))
@@ -93,9 +96,9 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
     
     model.train()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30], gamma=args.lr) 
+    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
     correct = 0
     total = 0
@@ -141,6 +144,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             #overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
             #overall_loss = change_loss + disease_loss
             overall_loss = change_loss + disease_loss + orth_loss
+            #overall_loss = change_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
