@@ -4,7 +4,7 @@ import sys
 import numpy as np
 from config import parse_arguments
 from datasets import ClassPairDataset
-from models.acm_resnet import acm_resnet50
+from models.acm_resnet import acm_resnet50, acm_resnet152
 
 import torch
 import torch.nn as nn
@@ -226,7 +226,8 @@ def main(args):
 
     # select network
     print('[*] build network...')
-    net = acm_resnet50(num_classes=512)
+    #net = acm_resnet50(num_classes=512)
+    net = acm_resnet152(num_classes=512)
 
     if torch.cuda.device_count() > 1 and device=='cuda':
         net = nn.DataParallel(net)
