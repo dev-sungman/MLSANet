@@ -63,24 +63,24 @@ def register_forward_hook(model):
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thresh=0.85):
     acts = []
     num_layers = len(layer_names)
-    normalize = nn.Softmax(dim=3)
+    normalize = nn.Softmax(dim=2)
 
     for layer in layer_names:
         act = activation[layer].squeeze()
         
         b, c, h, w = act.shape
-        act = act.view(b, c, 1, h*w)
-        act = normalize(act)
-        act = act.view(b, c, h, w)
-
+        
         act = torch.mean(act, dim=1)
+        act = act.view(b, 1, h*w)
+        act = normalize(act)
+        act = act.view(b, h, w)
 
         acts.append(act)
 
     fig, axarr = plt.subplots(len(layer_names), acts[0].shape[0], figsize=(60,40))
     
     for ia, act in enumerate(acts): # 6
-        for batch in range(act.shape[0]): #batch
+        for batch in range(5): #batch
             axarr[ia, batch].imshow(act[batch,:,:].cpu().detach().numpy())
 
             axarr[ia, batch].set_title('{}_{}'.format(layer_names[ia],batch))
@@ -94,8 +94,9 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
     
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    #scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[1, 5, 10], gamma=args.lr) 
-    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[10, 20, 30], gamma=args.lr) 
+    #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
     correct = 0
     total = 0
     
@@ -137,7 +138,9 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
 
-            overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
+            #overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
+            #overall_loss = change_loss + disease_loss
+            overall_loss = change_loss + disease_loss + orth_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -147,7 +150,6 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             optimizer.zero_grad()
             overall_loss.backward()
             optimizer.step()
-            scheduler.step()
             
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
@@ -162,6 +164,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             iter_ += 1
             overall_iter += 1
         
+        scheduler.step()
         test(args, test_loader, model, device, writer, log_dir, checkpoint_dir, overall_iter)
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, str(overall_iter)) + '.pth')
 
@@ -226,8 +229,8 @@ def main(args):
 
     # select network
     print('[*] build network...')
-    #net = acm_resnet50(num_classes=512)
-    net = acm_resnet152(num_classes=512)
+    net = acm_resnet50(num_classes=512)
+    #net = acm_resnet152(num_classes=512)
 
     if torch.cuda.device_count() > 1 and device=='cuda':
         net = nn.DataParallel(net)
@@ -241,5 +244,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = parse_arguments(sys.argv[1:])
-    main(args)
+    argv = parse_arguments(sys.argv[1:])
+    main(argv)
