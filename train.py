@@ -96,8 +96,8 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
     
     model.train()
-    #optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
     #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
     correct = 0
@@ -140,11 +140,11 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
-
-            #overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
-            #overall_loss = change_loss + disease_loss
-            overall_loss = change_loss + disease_loss + orth_loss
             #overall_loss = change_loss
+            #overall_loss = change_loss + disease_loss
+            #overall_loss = change_loss + disease_loss + orth_loss
+            #overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
+            overall_loss = disease_loss + orth_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -162,6 +162,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
                 writer.add_scalar('change_loss', running_change/iter_, overall_iter)
                 writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
+                writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
                 
                 visualize_activation_map(activation, layer_names, overall_iter, 'train', img_dir)
                 
@@ -174,6 +175,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
 
 
 def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter_):
+    print('[*] Test Phase')
     model.eval()
     
     correct = 0

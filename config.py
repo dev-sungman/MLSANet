@@ -11,7 +11,7 @@ def parse_arguments(argv):
     parser.add_argument('--gpu_idx', type=str, default='0')
 
     parser.add_argument('--batch_size', type=int, default=20)
-    parser.add_argument('--lr', type=float, default=0.03)
+    parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--w', type=int, default=16)
     
     parser.add_argument('--log_dir', type=str, default="runs")
@@ -21,5 +21,6 @@ def parse_arguments(argv):
     
     parser.add_argument('--backbone', type=str, default="resnet50")
     parser.add_argument('--img_folder', type=str, default='imgs') 
-
+    
+    parser.add_argument('--pretrained', type=str, default=None)
     return parser.parse_args()
