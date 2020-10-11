@@ -22,5 +22,6 @@ def parse_arguments(argv):
     parser.add_argument('--backbone', type=str, default="resnet50")
     parser.add_argument('--img_folder', type=str, default='imgs') 
     
+    parser.add_argument('--resume', type=bool, default=False)
     parser.add_argument('--pretrained', type=str, default=None)
     return parser.parse_args()

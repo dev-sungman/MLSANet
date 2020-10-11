@@ -97,9 +97,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
     
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
-    #scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr, max_lr=0.1)
     correct = 0
     total = 0
     
@@ -140,16 +138,15 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
-            #overall_loss = change_loss
             #overall_loss = change_loss + disease_loss
-            #overall_loss = change_loss + disease_loss + orth_loss
-            #overall_loss = change_loss + (orth_loss*0.4) + (disease_loss*0.8)
-            overall_loss = disease_loss + orth_loss
+            overall_loss = change_loss + disease_loss + (0.5*orth_loss)
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
             running_disease += disease_loss.item()
             running_loss += overall_loss.item()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
             optimizer.zero_grad()
             overall_loss.backward()
@@ -237,6 +234,9 @@ def main(args):
     print('[*] build network...')
     net = acm_resnet50(num_classes=512)
     #net = acm_resnet152(num_classes=512)
+    
+    if args.resume is True:
+        net.load_state_dict(torch.load(args.pretrained))
 
     if torch.cuda.device_count() > 1 and device=='cuda':
         net = nn.DataParallel(net)
