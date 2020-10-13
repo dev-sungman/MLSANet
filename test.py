@@ -40,14 +40,16 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 
     for layer in layer_names:
         act = activation[layer].squeeze()
+        print(act.shape)
+        if len(act.shape) > 3:
+            b, c, h, w = act.shape
         
-        b, c, h, w = act.shape
-        act = torch.mean(act, dim=1)
-        act = act.view(b, 1, h*w)
-        act = normalize(act)
-        act = act.view(b, h, w)
+            act = torch.mean(act, dim=1)
+            act = act.view(b, 1, h*w)
+            act = normalize(act)
+            act = act.view(b, h, w)
 
-        acts.append(act)
+            acts.append(act)
 
     fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(15,10))
     
@@ -139,9 +141,9 @@ def main(args):
 
     # select network
     print('[*] build network...')
-    net = acm_resnet50(num_classes=512)
+    #net = acm_resnet50(num_classes=512)
+    net = acm_resnet152(num_classes=512)
     net.load_state_dict(torch.load(args.pretrained))
-    #net = acm_resnet152(num_classes=512)
 
     if torch.cuda.device_count() > 1 and device=='cuda':
         net = nn.DataParallel(net)

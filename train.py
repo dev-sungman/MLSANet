@@ -30,37 +30,11 @@ def register_forward_hook(model):
             activation[name] = output.detach()
         return hook
     
-    layer_names = ['k_conv1', 'q_conv1', 'k_conv2', 'q_conv2', 'k_conv3', 'q_conv3', 'k_conv4', 'q_conv4', 'vis1', 'vis2']
+    layer_names = ['vis1', 'vis2']
     model.acm1.k_conv.register_forward_hook(get_activation(layer_names[0]))
     model.acm1.q_conv.register_forward_hook(get_activation(layer_names[1]))
-    model.acm2.k_conv.register_forward_hook(get_activation(layer_names[2]))
-    model.acm2.q_conv.register_forward_hook(get_activation(layer_names[3]))
-    model.acm3.k_conv.register_forward_hook(get_activation(layer_names[4]))
-    model.acm3.q_conv.register_forward_hook(get_activation(layer_names[5]))
-    model.acm4.k_conv.register_forward_hook(get_activation(layer_names[6]))
-    model.acm4.q_conv.register_forward_hook(get_activation(layer_names[7]))
-    model.vis_final1.register_forward_hook(get_activation(layer_names[8]))
-    model.vis_final2.register_forward_hook(get_activation(layer_names[9]))
     
     return activation, layer_names
-
-'''
-def register_forward_hook(model):
-    activation = {}
-
-    def get_activation(name):
-        def hook(model, input, output):
-            activation[name] = output.detach()
-        return hook
-    
-    layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
-    model.layer1.register_forward_hook(get_activation(layer_names[0]))
-    model.layer2.register_forward_hook(get_activation(layer_names[1]))
-    model.layer3.register_forward_hook(get_activation(layer_names[2]))
-    model.layer4.register_forward_hook(get_activation(layer_names[3]))
-    
-    return activation, layer_names
-'''
 
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thresh=0.85):
     acts = []
@@ -71,16 +45,16 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
 
     for layer in layer_names:
         act = activation[layer].squeeze()
-        
-        b, c, h, w = act.shape
-        act = torch.mean(act, dim=1)
-        act = act.view(b, 1, h*w)
-        act = normalize(act)
-        act = act.view(b, h, w)
+        if len(act.shape) > 3:
+            b, c, h, w = act.shape
+            act = torch.mean(act, dim=1)
+            act = act.view(b, 1, h*w)
+            act = normalize(act)
+            act = act.view(b, h, w)
 
-        acts.append(act)
+            acts.append(act)
 
-    fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(60,40))
+    fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(20,10))
     
     for ia, act in enumerate(acts): # 6
         for batch in range(visual_num): #batch
@@ -232,8 +206,8 @@ def main(args):
 
     # select network
     print('[*] build network...')
-    net = acm_resnet50(num_classes=512)
-    #net = acm_resnet152(num_classes=512)
+    #net = acm_resnet50(num_classes=512)
+    net = acm_resnet152(num_classes=512)
     
     if args.resume is True:
         net.load_state_dict(torch.load(args.pretrained))
