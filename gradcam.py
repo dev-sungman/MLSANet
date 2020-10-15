@@ -18,14 +18,15 @@ class FeatureExtractor():
     def save_gradient(self, grad):
         self.gradients.append(grad)
 
-    def __call__(self, x):
+    def __call__(self, x1, x2):
         outputs = []
         self.gradients = []
 
         for name, module in self.model._modules.items():
-            x = module(x)
+            x1, x2 = module(x1, x2)
             if name in self.target_layers:
-                x.register_hook(self.save_gradient)
+                x1.register_hook(self.save_gradient)
+                x2.register_hook(self.save_gradient)
                 outputs += [x]
 
         return outputs, x
@@ -43,7 +44,7 @@ class ModelOutputs():
         target_activations = []
         for name, module in self.model._modules.items():
             if module == self.feature_module:
-                target_activations, x = self.feature_extractor()
+                target_activations, x = self.feature_extractor(x)
             elif "avgpool" in name.lower():
                 x = module(x)
                 x = x.view(x.size(0), -1)
@@ -63,7 +64,7 @@ class GradCAM:
 
         self.extractor = ModelOutputs(self.model, self.feature_module, target_layer_names)
 
-    def forward(self, input)
+    def forward(self, input):
         return self.model(input)
 
     def __call__(self, input, index=None):

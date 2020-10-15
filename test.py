@@ -16,6 +16,7 @@ import pathlib
 from datetime import datetime
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
+import cv2
 
 def register_forward_hook(model):
     activation = {}
@@ -26,21 +27,22 @@ def register_forward_hook(model):
         return hook
     
     layer_names = ['vis1', 'vis2']
+    #layer_names = ['layer2', 'layer3']
     model.vis_final1.register_forward_hook(get_activation(layer_names[0]))
     model.vis_final2.register_forward_hook(get_activation(layer_names[1]))
     
     return activation, layer_names
 
-def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thresh=0.85):
+def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu, model, likeli):
+    label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
     normalize = nn.Softmax(dim=2)
 
     visual_num = 6
-
+    
     for layer in layer_names:
         act = activation[layer].squeeze()
-        print(act.shape)
         if len(act.shape) > 3:
             b, c, h, w = act.shape
         
@@ -48,21 +50,90 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thr
             act = act.view(b, 1, h*w)
             act = normalize(act)
             act = act.view(b, h, w)
-
+            act -= act.min(1, keepdim=True)[0]
+            act /= act.max(1, keepdim=True)[0]
             acts.append(act)
 
-    fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(15,10))
-    
-    for ia, act in enumerate(acts): # 6
+    fig, axarr = plt.subplots(len(layer_names)+2, visual_num, figsize=(15,10))
+    if len(acts) > 0:
         for batch in range(visual_num): #batch
-            axarr[ia, batch].imshow(act[batch,:,:].cpu().detach().numpy())
+            np_base = base[batch,0,:,:].cpu().detach().numpy()
+            np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
+            np_fu = fu[batch,0,:,:].cpu().detach().numpy()
+            np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
 
-            axarr[ia, batch].set_title('{}_{}'.format(layer_names[ia],batch))
-    
-    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.1, hspace=0)                
-    plt.savefig(os.path.join(img_dir, 'act_map_{}_{}.png').format(phase, iter_))
+            np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
+            np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
+
+            np_base_act = cv2.resize(np_base_act, (512,512))
+            #np_base_act = np.stack((np_base_act,)*3, -1)
+            np_fu_act = cv2.resize(np_fu_act, (512,512))
+            #np_fu_act = np.stack((np_fu_act,)*3, -1)
+            print(likeli) 
+
+            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_JET)
+            base_heat = np.float32(base_heat) /255
+            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_JET)
+            fu_heat = np.float32(fu_heat) /255
+
+            print(np_base.shape, np_base_act.shape, base_heat.shape)
+            base_cam = np.float32(np_base) + base_heat
+            base_cam = base_cam / np.max(base_cam)
+            
+            fu_cam = np.float32(np_fu) + fu_heat
+            fu_cam = fu_cam / np.max(fu_cam)
+
+            
+            label_name = label_names[labels[batch]]
+            pred_name = label_names[preds[batch]]
+
+            if (label_name == 'nochange') & (pred_name == 'nochange'):
+                TP_path = os.path.join(img_dir, 'tp')
+                pathlib.Path(TP_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(TP_path,'base_{}.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(TP_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(TP_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(TP_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+            elif (label_name == 'nochange') & (pred_name == 'change'):
+                FN_path = os.path.join(img_dir, 'fn')
+                pathlib.Path(FN_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(FN_path,'base_{}.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(FN_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(FN_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(FN_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+            elif (label_name == 'change') & (pred_name == 'change'):
+                TN_path = os.path.join(img_dir, 'tn')
+                pathlib.Path(TN_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(TN_path,'base_{}.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(TN_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(TN_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(TN_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+            else:
+                FP_path = os.path.join(img_dir, 'fp')
+                pathlib.Path(FP_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(FP_path,'base_{}.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(FP_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(FP_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(FP_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+
+            #axarr[0, batch].imshow(base[batch,0,:,:].cpu().detach().numpy(), cmap='gray')
+            #axarr[0, batch].set_title('{}_{}'.format('baseline',batch))
+
+            #axarr[1, batch].imshow(fu[batch,0,:,:].cpu().detach().numpy(), cmap='gray')
+            #axarr[1, batch].set_title('{}_{}'.format('follow-up',batch))
+
+            #axarr[2, batch].imshow(acts[0][batch,:,:].cpu().detach().numpy(), cmap='jet')
+            #axarr[2, batch].set_title('preds:{}, gt:{}'.format(pred_name, label_name))
+
+            #axarr[3, batch].imshow(acts[1][batch,:,:].cpu().detach().numpy(), cmap='jet')
+        
+    '''
+    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.1, hspace=0.2) 
+    plt.savefig(os.path.join(img_dir, 'visualize_{}_{}.png').format(phase, iter_))
     plt.close(fig)
     plt.clf()
+    '''
+        
 
 def test(args, data_loader, model, device, log_dir, checkpoint_dir):
     print('[*] Test Phase')
@@ -74,40 +145,38 @@ def test(args, data_loader, model, device, log_dir, checkpoint_dir):
     img_dir = os.path.join(log_dir, 'imgs')
     pathlib.Path(img_dir).mkdir(parents=True, exist_ok=True)
 
-    with torch.no_grad():
-        overall_pred = []
-        overall_gt = []
-        iter_ = 0
-        for base, fu, labels, _ in iter(data_loader):
-            base = base.to(device)
-            fu = fu.to(device)
-            labels = labels.to(device)
-            
-            # for activation
-            activation, layer_names = register_forward_hook(model)
-            
-            _, _, outputs, _ = model(base,fu)
-            _, preds = outputs.max(1)
-            
-            preds_cpu = preds.cpu().numpy().tolist()
-            labels_cpu = labels.cpu().numpy().tolist()
-            overall_pred += preds_cpu
-            overall_gt += labels_cpu
+    overall_pred = []
+    overall_gt = []
+    iter_ = 0
+    for base, fu, labels, _ in iter(data_loader):
+        base = base.to(device)
+        fu = fu.to(device)
+        labels = labels.to(device)
+        
+        # for activation
+        activation, layer_names = register_forward_hook(model)
+        
+        _, _, outputs, _ = model(base,fu)
+        _, preds = outputs.max(1)
+        
+        preds_cpu = preds.cpu().numpy().tolist()
+        labels_cpu = labels.cpu().numpy().tolist()
+        overall_pred += preds_cpu
+        overall_gt += labels_cpu
 
-            total += labels.size(0)
-            correct += preds.eq(labels).sum().item()
-            
-            visualize_activation_map(activation, layer_names, iter_, 'test', img_dir)
-            iter_ += 1
+        total += labels.size(0)
+        correct += preds.eq(labels).sum().item()
 
-        print(overall_pred, overall_gt) 
-        tn, fp, fn, tp = confusion_matrix(overall_gt, overall_pred).ravel()
-        print('tn, fp, fn, tp: ', tn, fp, fn, tp)
-        print('specificity: ', tn/(tn+fp))
-        print('sensitivity: ', tp/(tp+fn))
-        print('positive predictive value: ', tp/(tp+fp))
-        print('negative predictive value: ', tn/(tn+fn))
-        print('test_acc: ', 100.*correct/total)
+        visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu, model, preds_cpu)
+        iter_ += 1
+
+    tp, fn, fp, tn = confusion_matrix(overall_gt, overall_pred).ravel()
+    print('tn, fp, fn, tp: ', tn, fp, fn, tp)
+    print('specificity: ', tn/(tn+fp))
+    print('sensitivity: ', tp/(tp+fn))
+    print('positive predictive value: ', tp/(tp+fp))
+    print('negative predictive value: ', tn/(tn+fn))
+    print('test_acc: ', 100.*correct/total)
 
 def main(args):
     # 0. device check & pararrel
