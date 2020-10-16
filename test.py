@@ -47,40 +47,44 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             b, c, h, w = act.shape
         
             act = torch.mean(act, dim=1)
-            act = act.view(b, 1, h*w)
-            act = normalize(act)
-            act = act.view(b, h, w)
             act -= act.min(1, keepdim=True)[0]
             act /= act.max(1, keepdim=True)[0]
             acts.append(act)
 
-    fig, axarr = plt.subplots(len(layer_names)+2, visual_num, figsize=(15,10))
     if len(acts) > 0:
         for batch in range(visual_num): #batch
             np_base = base[batch,0,:,:].cpu().detach().numpy()
+            np_base = cv2.resize(np_base, (256, 256))
             np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
+            np_fu = cv2.resize(np_base, (256, 256))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
 
-            np_base_act = cv2.resize(np_base_act, (512,512))
-            #np_base_act = np.stack((np_base_act,)*3, -1)
-            np_fu_act = cv2.resize(np_fu_act, (512,512))
-            #np_fu_act = np.stack((np_fu_act,)*3, -1)
-            print(likeli) 
+            print(np.min(np_base_act), np.max(np_base_act))
 
-            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_JET)
+            np_base_act = cv2.resize(np_base_act, (256,256))
+            np_base_act -= 0.8
+            np_base_act[np_base_act<0] = 0.
+            np_base_act -= np.min(np_base_act)
+            np_base_act /= np.max(np_base_act)
+            np_fu_act = cv2.resize(np_fu_act, (256,256))
+            np_fu_act -= 0.8
+            np_fu_act[np_fu_act<0] = 0.
+            np_fu_act -= np.min(np_fu_act)
+            np_fu_act /= np.max(np_fu_act)
+
+            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_BONE)
             base_heat = np.float32(base_heat) /255
-            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_JET)
+            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_BONE)
             fu_heat = np.float32(fu_heat) /255
 
-            print(np_base.shape, np_base_act.shape, base_heat.shape)
-            base_cam = np.float32(np_base) + base_heat
+            base_cam = np.float32(np_base) * base_heat
             base_cam = base_cam / np.max(base_cam)
             
-            fu_cam = np.float32(np_fu) + fu_heat
+            fu_cam = np.float32(np_fu) * fu_heat
             fu_cam = fu_cam / np.max(fu_cam)
 
             
@@ -90,49 +94,32 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             if (label_name == 'nochange') & (pred_name == 'nochange'):
                 TP_path = os.path.join(img_dir, 'tp')
                 pathlib.Path(TP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TP_path,'base_{}.jpg'.format(iter_)), np_base*255)
-                cv2.imwrite(os.path.join(TP_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
-                cv2.imwrite(os.path.join(TP_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
-                cv2.imwrite(os.path.join(TP_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_base.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_fu.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_base_am.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_fu_am.jpg'.format(iter_)), fu_cam*255)
             elif (label_name == 'nochange') & (pred_name == 'change'):
                 FN_path = os.path.join(img_dir, 'fn')
                 pathlib.Path(FN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FN_path,'base_{}.jpg'.format(iter_)), np_base*255)
-                cv2.imwrite(os.path.join(FN_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
-                cv2.imwrite(os.path.join(FN_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
-                cv2.imwrite(os.path.join(FN_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_base.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_fu.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_base_am.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_fu_am.jpg'.format(iter_)), fu_cam*255)
             elif (label_name == 'change') & (pred_name == 'change'):
                 TN_path = os.path.join(img_dir, 'tn')
                 pathlib.Path(TN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TN_path,'base_{}.jpg'.format(iter_)), np_base*255)
-                cv2.imwrite(os.path.join(TN_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
-                cv2.imwrite(os.path.join(TN_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
-                cv2.imwrite(os.path.join(TN_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_base.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_fu.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_base_am.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_fu_am.jpg'.format(iter_)), fu_cam*255)
             else:
                 FP_path = os.path.join(img_dir, 'fp')
                 pathlib.Path(FP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FP_path,'base_{}.jpg'.format(iter_)), np_base*255)
-                cv2.imwrite(os.path.join(FP_path,'fu_{}.jpg'.format(iter_)), np_fu*255)
-                cv2.imwrite(os.path.join(FP_path,'base_am_{}.jpg'.format(iter_)), base_cam*255)
-                cv2.imwrite(os.path.join(FP_path,'fu_am_{}.jpg'.format(iter_)), fu_cam*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_base.jpg'.format(iter_)), np_base*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_fu.jpg'.format(iter_)), np_fu*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_base_am.jpg'.format(iter_)), base_cam*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_fu_am.jpg'.format(iter_)), fu_cam*255)
 
-            #axarr[0, batch].imshow(base[batch,0,:,:].cpu().detach().numpy(), cmap='gray')
-            #axarr[0, batch].set_title('{}_{}'.format('baseline',batch))
-
-            #axarr[1, batch].imshow(fu[batch,0,:,:].cpu().detach().numpy(), cmap='gray')
-            #axarr[1, batch].set_title('{}_{}'.format('follow-up',batch))
-
-            #axarr[2, batch].imshow(acts[0][batch,:,:].cpu().detach().numpy(), cmap='jet')
-            #axarr[2, batch].set_title('preds:{}, gt:{}'.format(pred_name, label_name))
-
-            #axarr[3, batch].imshow(acts[1][batch,:,:].cpu().detach().numpy(), cmap='jet')
-        
-    '''
-    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.1, hspace=0.2) 
-    plt.savefig(os.path.join(img_dir, 'visualize_{}_{}.png').format(phase, iter_))
-    plt.close(fig)
-    plt.clf()
-    '''
         
 
 def test(args, data_loader, model, device, log_dir, checkpoint_dir):
