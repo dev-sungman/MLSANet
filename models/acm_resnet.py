@@ -215,13 +215,13 @@ class ResNet(nn.Module):
         x1 = self.layer4(x1)
         x2 = self.layer4(x2)
         x1, x2, orth_loss4 = self.acm4(x1, x2)
-
+        
         x1 = self.vis_final1(x1)
         x2 = self.vis_final2(x2)
         
         x1 = self.avgpool(x1)
         x2 = self.avgpool(x2)
-
+        
         x1 = torch.flatten(x1, 1)
         x2 = torch.flatten(x2, 1)
 

@@ -27,13 +27,12 @@ def register_forward_hook(model):
         return hook
     
     layer_names = ['vis1', 'vis2']
-    #layer_names = ['layer2', 'layer3']
     model.vis_final1.register_forward_hook(get_activation(layer_names[0]))
     model.vis_final2.register_forward_hook(get_activation(layer_names[1]))
     
     return activation, layer_names
 
-def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu, model, likeli):
+def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
     label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
@@ -63,7 +62,6 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
 
-            print(np.min(np_base_act), np.max(np_base_act))
 
             np_base_act = cv2.resize(np_base_act, (256,256))
             np_base_act -= 0.8
@@ -154,7 +152,7 @@ def test(args, data_loader, model, device, log_dir, checkpoint_dir):
         total += labels.size(0)
         correct += preds.eq(labels).sum().item()
 
-        visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu, model, preds_cpu)
+        visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
         iter_ += 1
 
     tp, fn, fp, tn = confusion_matrix(overall_gt, overall_pred).ravel()

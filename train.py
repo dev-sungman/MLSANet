@@ -18,6 +18,7 @@ import time
 import pathlib
 from datetime import datetime
 import matplotlib.pyplot as plt
+import cv2
 
 def ACM_loss(logit):
     return 2-(2*logit)
@@ -31,41 +32,93 @@ def register_forward_hook(model):
         return hook
     
     layer_names = ['vis1', 'vis2']
-    model.acm1.k_conv.register_forward_hook(get_activation(layer_names[0]))
-    model.acm1.q_conv.register_forward_hook(get_activation(layer_names[1]))
-    
+    model.vis_final1.register_forward_hook(get_activation(layer_names[0]))
+    model.vis_final2.register_forward_hook(get_activation(layer_names[1]))
     return activation, layer_names
 
-def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, thresh=0.85):
+def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
+    label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
-    normalize = nn.Softmax(dim=2)
 
-    visual_num = 8
-
+    visual_num = 6
+    
     for layer in layer_names:
         act = activation[layer].squeeze()
         if len(act.shape) > 3:
             b, c, h, w = act.shape
+        
             act = torch.mean(act, dim=1)
-            act = act.view(b, 1, h*w)
-            act = normalize(act)
-            act = act.view(b, h, w)
-
+            act -= act.min(1, keepdim=True)[0]
+            act /= act.max(1, keepdim=True)[0]
             acts.append(act)
 
-    fig, axarr = plt.subplots(len(layer_names), visual_num, figsize=(20,10))
-    
-    for ia, act in enumerate(acts): # 6
+    if len(acts) > 0:
         for batch in range(visual_num): #batch
-            axarr[ia, batch].imshow(act[batch,:,:].cpu().detach().numpy())
+            np_base = base[batch,0,:,:].cpu().detach().numpy()
+            np_base = cv2.resize(np_base, (256, 256))
+            np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
+            
+            np_fu = fu[batch,0,:,:].cpu().detach().numpy()
+            np_fu = cv2.resize(np_fu, (256, 256))
+            np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
 
-            axarr[ia, batch].set_title('{}_{}'.format(layer_names[ia],batch))
-    
-    plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.1, hspace=0.1)                
-    plt.savefig(os.path.join(img_dir, 'act_map_{}_{}.png').format(phase, iter_))
-    plt.close(fig)
-    plt.clf()
+            np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
+            np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
+
+            np_base_act = cv2.resize(np_base_act, (256,256))
+            np_base_act -= 0.8
+            np_base_act[np_base_act<0] = 0.
+            np_base_act -= np.min(np_base_act)
+            np_base_act /= np.max(np_base_act)
+            np_fu_act = cv2.resize(np_fu_act, (256,256))
+            np_fu_act -= 0.8
+            np_fu_act[np_fu_act<0] = 0.
+            np_fu_act -= np.min(np_fu_act)
+            np_fu_act /= np.max(np_fu_act)
+
+
+            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_JET)
+            base_heat = np.float32(base_heat) /255
+            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_JET)
+            fu_heat = np.float32(fu_heat) /255
+
+            base_cam = np.float32(np_base) + base_heat
+            base_cam = base_cam / np.max(base_cam)
+            
+            fu_cam = np.float32(np_fu) + fu_heat
+            fu_cam = fu_cam / np.max(fu_cam)
+            
+            label_name = label_names[labels[batch]]
+            pred_name = label_names[preds[batch]]
+            if (label_name == 'nochange') & (pred_name == 'nochange'):
+                TP_path = os.path.join(img_dir, 'tp')
+                pathlib.Path(TP_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(TP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+            elif (label_name == 'nochange') & (pred_name == 'change'):
+                FN_path = os.path.join(img_dir, 'fn')
+                pathlib.Path(FN_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(FN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+            elif (label_name == 'change') & (pred_name == 'change'):
+                TN_path = os.path.join(img_dir, 'tn')
+                pathlib.Path(TN_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(TN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+            else:
+                FP_path = os.path.join(img_dir, 'fp')
+                pathlib.Path(FP_path).mkdir(parents=True, exist_ok=True)
+                cv2.imwrite(os.path.join(FP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
 
 def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
     
@@ -102,6 +155,9 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             total += change_labels.size(0)
             correct += preds.eq(change_labels).sum().item()
             
+            preds_cpu = preds.cpu().numpy().tolist()
+            labels_cpu = change_labels.cpu().numpy().tolist()
+            
             # change loss
             ce_criterion = nn.CrossEntropyLoss()
             change_loss = ce_criterion(outputs, change_labels)
@@ -113,7 +169,8 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
             #overall_loss = change_loss + disease_loss
-            overall_loss = change_loss + disease_loss + (0.5*orth_loss)
+            #overall_loss = change_loss + disease_loss + (0.5*orth_loss)
+            overall_loss = disease_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -134,8 +191,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
                 writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
                 writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
-                
-                visualize_activation_map(activation, layer_names, overall_iter, 'train', img_dir)
+                visualize_activation_map(activation, layer_names, overall_iter, 'train', img_dir, preds_cpu, labels_cpu, base, fu)
                 
             iter_ += 1
             overall_iter += 1
@@ -165,7 +221,10 @@ def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter
             total += labels.size(0)
             correct += preds.eq(labels).sum().item()
 
-            visualize_activation_map(activation, layer_names, iter_, 'test', img_dir)
+            preds_cpu = preds.cpu().numpy().tolist()
+            labels_cpu = labels.cpu().numpy().tolist()
+
+            visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
 
         print('[*] Test Acc: {:5f}'.format(100.*correct/total))
         writer.add_scalar('test_acc', 100.*correct/total, iter_)
@@ -176,6 +235,7 @@ def main(args):
     # 0. device check & pararrel
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_idx
+    print('[*] device: ', device)
 
     # path setting
     pathlib.Path(args.log_dir).mkdir(parents=True, exist_ok=True)
@@ -202,7 +262,7 @@ def main(args):
     test_datasets = ClassPairDataset(args.test_path, dataset=args.dataset, mode='test')
 
     train_loader = torch.utils.data.DataLoader(train_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=4, pin_memory=True, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=6, num_workers=4, pin_memory=True, shuffle=True)
 
     # select network
     print('[*] build network...')

@@ -9,11 +9,11 @@ class ACMBlock(nn.Module):
         self.in_channels = in_channels
         self.out_channels = in_channels
         self.k_conv = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, (1,1)),
+            nn.Conv2d(self.in_channels, self.out_channels, (1,1), groups=64),
         )
 
         self.q_conv = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, (1,1)),
+            nn.Conv2d(self.in_channels, self.out_channels, (1,1), groups=64),
         )
 
         self.global_pooling = nn.Sequential(
@@ -70,7 +70,6 @@ class ACMBlock(nn.Module):
         cos = nn.CosineSimilarity(dim=1, eps=1e-6)
         orth_loss = cos(k, q)
         orth_loss = torch.mean(orth_loss, dim=0)
-        #orth_loss = torch.mean(k*q, dim=1, keepdim=True)
         return orth_loss
 
     def forward(self, x1, x2):
@@ -100,8 +99,6 @@ class ACMBlock(nn.Module):
         out1 = x1 + K + Q
         out2 = x2 + K + Q
         
-        #out1 = x1 + (K - Q)
-        #out2 = x2 + (K - Q)
         out1 = channel_weights1 * out1
         out2 = channel_weights2 * out2
         
