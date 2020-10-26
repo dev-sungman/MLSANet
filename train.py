@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from config import parse_arguments
 from datasets import ClassPairDataset
+from utils import register_forward_hook, visualize_activation_map
 from models.acm_resnet import acm_resnet50, acm_resnet152
 
 import torch
@@ -23,108 +24,12 @@ import cv2
 def ACM_loss(logit):
     return 2-(2*logit)
 
-def register_forward_hook(model):
-    activation = {}
-
-    def get_activation(name):
-        def hook(model, input, output):
-            activation[name] = output.detach()
-        return hook
-    
-    layer_names = ['vis1', 'vis2']
-    model.vis_final1.register_forward_hook(get_activation(layer_names[0]))
-    model.vis_final2.register_forward_hook(get_activation(layer_names[1]))
-    return activation, layer_names
-
-def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
-    label_names = ['change', 'nochange']
-    acts = []
-    num_layers = len(layer_names)
-
-    visual_num = 6
-    
-    for layer in layer_names:
-        act = activation[layer].squeeze()
-        if len(act.shape) > 3:
-            b, c, h, w = act.shape
-        
-            act = torch.mean(act, dim=1)
-            act -= act.min(1, keepdim=True)[0]
-            act /= act.max(1, keepdim=True)[0]
-            acts.append(act)
-
-    if len(acts) > 0:
-        for batch in range(visual_num): #batch
-            np_base = base[batch,0,:,:].cpu().detach().numpy()
-            np_base = cv2.resize(np_base, (256, 256))
-            np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
-            
-            np_fu = fu[batch,0,:,:].cpu().detach().numpy()
-            np_fu = cv2.resize(np_fu, (256, 256))
-            np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
-
-            np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
-            np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
-
-            np_base_act = cv2.resize(np_base_act, (256,256))
-            np_base_act -= 0.8
-            np_base_act[np_base_act<0] = 0.
-            np_base_act -= np.min(np_base_act)
-            np_base_act /= np.max(np_base_act)
-            np_fu_act = cv2.resize(np_fu_act, (256,256))
-            np_fu_act -= 0.8
-            np_fu_act[np_fu_act<0] = 0.
-            np_fu_act -= np.min(np_fu_act)
-            np_fu_act /= np.max(np_fu_act)
-
-
-            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_JET)
-            base_heat = np.float32(base_heat) /255
-            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_JET)
-            fu_heat = np.float32(fu_heat) /255
-
-            base_cam = np.float32(np_base) + base_heat
-            base_cam = base_cam / np.max(base_cam)
-            
-            fu_cam = np.float32(np_fu) + fu_heat
-            fu_cam = fu_cam / np.max(fu_cam)
-            
-            label_name = label_names[labels[batch]]
-            pred_name = label_names[preds[batch]]
-            if (label_name == 'nochange') & (pred_name == 'nochange'):
-                TP_path = os.path.join(img_dir, 'tp')
-                pathlib.Path(TP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
-            elif (label_name == 'nochange') & (pred_name == 'change'):
-                FN_path = os.path.join(img_dir, 'fn')
-                pathlib.Path(FN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
-            elif (label_name == 'change') & (pred_name == 'change'):
-                TN_path = os.path.join(img_dir, 'tn')
-                pathlib.Path(TN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
-            else:
-                FP_path = os.path.join(img_dir, 'fp')
-                pathlib.Path(FP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
-
 def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
     
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
+    #scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
+    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.01, max_lr=0.1)
     correct = 0
     total = 0
     
@@ -182,6 +87,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             optimizer.zero_grad()
             overall_loss.backward()
             optimizer.step()
+            scheduler.step()
             
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
@@ -193,10 +99,10 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
                 writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
                 visualize_activation_map(activation, layer_names, overall_iter, 'train', img_dir, preds_cpu, labels_cpu, base, fu)
                 
+
             iter_ += 1
             overall_iter += 1
         
-        scheduler.step()
         test(args, test_loader, model, device, writer, log_dir, checkpoint_dir, overall_iter)
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, str(overall_iter)) + '.pth')
 
@@ -210,26 +116,30 @@ def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter
     img_dir = os.path.join(log_dir, 'imgs')
     
     with torch.no_grad():
-        for base, fu, labels, _ in iter(data_loader):
+        for base, fu, change_labels, disease_labels in iter(data_loader):
             base = base.to(device)
             fu = fu.to(device)
-            labels = labels.to(device)
+            change_labels = change_labels.to(device)
             
             activation, layer_names = register_forward_hook(model)
             _, _, outputs, _ = model(base,fu)
-            _, preds = outputs.max(1)
-            total += labels.size(0)
-            correct += preds.eq(labels).sum().item()
 
+            _, preds = outputs.max(1)
             preds_cpu = preds.cpu().numpy().tolist()
-            labels_cpu = labels.cpu().numpy().tolist()
+
+            ### Change / No-change
+            total += change_labels.size(0)
+            correct += preds.eq(change_labels).sum().item()
+            
+            labels_cpu = change_labels.cpu().numpy().tolist()
 
             visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
 
         print('[*] Test Acc: {:5f}'.format(100.*correct/total))
-        writer.add_scalar('test_acc', 100.*correct/total, iter_)
+        writer.add_scalar('Test acc', 100.*correct/total, iter_)
 
     model.train()
+
 
 def main(args):
     # 0. device check & pararrel
@@ -260,7 +170,12 @@ def main(args):
 
     train_datasets = ClassPairDataset(args.train_path, dataset=args.dataset, mode='train')
     test_datasets = ClassPairDataset(args.test_path, dataset=args.dataset, mode='test')
-
+    
+    print('[*] train data property')
+    train_datasets.get_data_property()
+    print('[*] test data property')
+    test_datasets.get_data_property()
+    
     train_loader = torch.utils.data.DataLoader(train_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True, shuffle=True)
     test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=6, num_workers=4, pin_memory=True, shuffle=True)
 

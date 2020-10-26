@@ -47,10 +47,7 @@ class ClassPairDataset(Dataset):
                         saturation=(0.7, 1.3),
                         hue=(-0.1, 0.1))
                     ], p=0.5),
-                transforms.ToTensor(),
-                transforms.RandomApply([
-                    transforms.RandomErasing(scale=(0.02,0.1))
-                    ], p=0.2),
+                transforms.ToTensor()
                 ])
 
         else:
@@ -122,6 +119,7 @@ class ClassPairDataset(Dataset):
             samples = {'imgs':[], 'change_labels':[], 'disease_labels':[]}
             
             missing_pair_cnt = 0
+            other_label_cnt = 0
             t_iter = 0
 
             categories = os.listdir(self.input_path)
@@ -154,6 +152,7 @@ class ClassPairDataset(Dataset):
                                 samples['imgs'].append(pairs)
                                 samples['change_labels'].append(change_label)
                                 samples['disease_labels'].append([0,0])
+
                             else:
                                 missing_pair_cnt += 1 
 
@@ -175,7 +174,36 @@ class ClassPairDataset(Dataset):
     
     def _catch_exception(self, img):
         return img[0, :, :].unsqueeze(0) if img.shape[0] == 3 else img
-        
 
+    def _get_change_label_num(self, label, label_list):
+        specific_labels = []
+        for i in label_list:
+            if label == i:
+                specific_labels.append(i)
+        return len(specific_labels)
+                
+    def _get_disease_label_num(self, label, label_list):
+        specific_labels = []
+        for i in label_list:
+            for j in i:
+                if label == j:
+                    specific_labels.append(i)
+        return len(specific_labels)
+
+    def get_data_property(self):
+        if len(self.samples['change_labels']):
+            print('images(pair): {}\nlabels(change): {}\nlabels(nochange): {}\nlabels(normal): {}\nlabels(abnormal): {}\nlabels(unknown): {}'.format(
+                    len(self.samples['imgs']), 
+                    self._get_change_label_num(0, self.samples['change_labels']),
+                    self._get_change_label_num(1, self.samples['change_labels']),
+                    self._get_disease_label_num(0, self.samples['disease_labels']),
+                    self._get_disease_label_num(1, self.samples['disease_labels']),
+                    self._get_disease_label_num(2, self.samples['disease_labels']),
+                    )
+                    )
+                    
+
+
+        
 if __name__ == '__main__':
     args = parse_arguments(sys.argv[1:])
