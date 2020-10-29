@@ -46,14 +46,24 @@ class ClassPairDataset(Dataset):
                         contrast=(0.7, 1.3),
                         saturation=(0.7, 1.3),
                         hue=(-0.1, 0.1))
-                    ], p=0.5),
-                transforms.ToTensor()
+                    ], p=0.2),
+                transforms.RandomApply([
+                    transforms.RandomRotation(10),
+                    transforms.RandomPerspective(),
+                    transforms.RandomAffine(5)
+                    ], p=0.2),
+                transforms.ToTensor(),
+                transforms.Normalize((0.2,), (0.4,)),
+                transforms.RandomApply([
+                    transforms.RandomErasing(p=0.1, scale=(0.01,0.05))
+                    ], p=0.2),
                 ])
 
         else:
             self.transform = transforms.Compose([
                 transforms.Resize(512),
                 transforms.ToTensor(),
+                transforms.Normalize((0.2), (0.4)),
                 ])
     
     def _find_disease_label(self, exam_id):

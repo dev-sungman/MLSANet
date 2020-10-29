@@ -59,9 +59,9 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_fu_act -= np.min(np_fu_act)
             np_fu_act /= np.max(np_fu_act)
 
-            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_BONE)
+            base_heat = cv2.applyColorMap(np.uint8(255*np_base_act), cv2.COLORMAP_JET)
             base_heat = np.float32(base_heat) /255
-            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_BONE)
+            fu_heat = cv2.applyColorMap(np.uint8(255*np_fu_act), cv2.COLORMAP_JET)
             fu_heat = np.float32(fu_heat) /255
 
             base_cam = np.float32(np_base) + base_heat

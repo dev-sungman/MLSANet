@@ -28,8 +28,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
     
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    #scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
-    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.01, max_lr=0.1)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
     correct = 0
     total = 0
     
@@ -73,9 +72,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
 
-            #overall_loss = change_loss + disease_loss
-            #overall_loss = change_loss + disease_loss + (0.5*orth_loss)
-            overall_loss = disease_loss
+            overall_loss = change_loss + disease_loss + orth_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -87,7 +84,6 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             optimizer.zero_grad()
             overall_loss.backward()
             optimizer.step()
-            scheduler.step()
             
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
@@ -103,6 +99,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             iter_ += 1
             overall_iter += 1
         
+        scheduler.step()
         test(args, test_loader, model, device, writer, log_dir, checkpoint_dir, overall_iter)
         torch.save(model.state_dict(), os.path.join(checkpoint_dir, str(overall_iter)) + '.pth')
 
