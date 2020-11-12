@@ -208,18 +208,16 @@ class ResNet(nn.Module):
         x2 = self.layer2(x2)
         x1, x2, orth_loss2 = self.acm2(x1, x2)
         
-        vis1 = self.vis_final1(x1)
-        vis2 = self.vis_final2(x2)
-        
         x1 = self.layer3(x1)
         x2 = self.layer3(x2)
         x1, x2, orth_loss3 = self.acm3(x1, x2)
         
+        vis1 = self.vis_final1(x1)
+        vis2 = self.vis_final2(x2)
         
         x1 = self.layer4(x1)
         x2 = self.layer4(x2)
         x1, x2, orth_loss4 = self.acm4(x1, x2)
-        
         
         x1 = self.avgpool(x1)
         x2 = self.avgpool(x2)

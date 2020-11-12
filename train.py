@@ -28,7 +28,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
     
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[15, 25, 30]) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 5, 7]) 
     correct = 0
     total = 0
     
@@ -71,8 +71,11 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
 
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
-
-            overall_loss = change_loss + disease_loss + orth_loss
+            
+            if epoch < 3:
+                overall_loss = disease_loss
+            else:
+                overall_loss = change_loss + disease_loss + orth_loss
             
             running_change += change_loss.item()
             running_orth += orth_loss.item()
@@ -93,7 +96,6 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
                 writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
                 writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
-                visualize_activation_map(activation, layer_names, overall_iter, 'train', img_dir, preds_cpu, labels_cpu, base, fu)
                 
 
             iter_ += 1

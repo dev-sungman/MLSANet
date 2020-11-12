@@ -29,7 +29,7 @@ class ClassPairDataset(Dataset):
         if os.path.exists(json_name) is True:
             print('[*] {} is already exist. Loading Json from {}'.format(json_name, json_name))
             with open(json_name, "r") as f:
-                self.samples = json.load(open(json_name,"r"))
+                self.samples = json.load(f)
         else:
             print('[*] There is no {}. Start making new Json'.format(json_name, json_name))
             self.samples = self._make_dataset(mode)
@@ -38,8 +38,8 @@ class ClassPairDataset(Dataset):
         
         if mode == 'train':
             self.transform = transforms.Compose([
-                transforms.Resize(580),
-                transforms.CenterCrop(512),
+                transforms.Resize(540),
+                transforms.RandomCrop(512),
                 transforms.RandomApply([
                     transforms.ColorJitter(
                         brightness=(0.7, 1.3),
@@ -63,7 +63,7 @@ class ClassPairDataset(Dataset):
             self.transform = transforms.Compose([
                 transforms.Resize(512),
                 transforms.ToTensor(),
-                transforms.Normalize((0.2), (0.4)),
+                transforms.Normalize((0.2,), (0.4,)),
                 ])
     
     def _find_disease_label(self, exam_id):

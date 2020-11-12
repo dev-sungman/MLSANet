@@ -21,8 +21,10 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
     label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
-
+    
     visual_num = 6
+    if base.shape[0] < visual_num:
+        visual_num = base.shape[0]
     
     for layer in layer_names:
         act = activation[layer].squeeze()
@@ -39,10 +41,12 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_base = base[batch,0,:,:].cpu().detach().numpy()
             np_base = cv2.resize(np_base, (256, 256))
             np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
+            np_base = (np_base*0.4)+0.2
             
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
             np_fu = cv2.resize(np_fu, (256, 256))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
+            np_fu = (np_fu*0.4) + 0.2
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
@@ -72,31 +76,42 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             
             label_name = label_names[labels[batch]]
             pred_name = label_names[preds[batch]]
+            
+            full_image = np.zeros((512,512,3))
+            full_image[:256, :256, :] = np_base*255
+            full_image[256:, :256, :] = np_fu*255
+            full_image[:256, 256:, :] = base_cam*255
+            full_image[256:, 256:, :] = fu_cam*255
+
             if (label_name == 'nochange') & (pred_name == 'nochange'):
                 TP_path = os.path.join(img_dir, 'tp')
                 pathlib.Path(TP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(TP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+                #cv2.imwrite(os.path.join(TP_path,'{}_{}_base_{}.jpg'.format(iter_, phase, batch)), np_base*255)
+                #cv2.imwrite(os.path.join(TP_path,'{}_{}_fu_{}.jpg'.format(iter_, phase, batch)), np_fu*255)
+                #cv2.imwrite(os.path.join(TP_path,'{}_{}_base_am_{}.jpg'.format(iter_, phase, batch)), base_cam*255)
+                #cv2.imwrite(os.path.join(TP_path,'{}_{}_fu_am_{}.jpg'.format(iter_, phase, batch)), fu_cam*255)
+                cv2.imwrite(os.path.join(TP_path,'{}_{}_full_{}.jpg'.format(iter_, phase, batch)), full_image)
             elif (label_name == 'nochange') & (pred_name == 'change'):
                 FN_path = os.path.join(img_dir, 'fn')
                 pathlib.Path(FN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(FN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+                #cv2.imwrite(os.path.join(FN_path,'{}_{}_base_{}.jpg'.format(iter_, phase, batch)), np_base*255)
+                #cv2.imwrite(os.path.join(FN_path,'{}_{}_fu_{}.jpg'.format(iter_, phase, batch)), np_fu*255)
+                #cv2.imwrite(os.path.join(FN_path,'{}_{}_base_am_{}.jpg'.format(iter_, phase, batch)), base_cam*255)
+                #cv2.imwrite(os.path.join(FN_path,'{}_{}_fu_am_{}.jpg'.format(iter_, phase, batch)), fu_cam*255)
+                cv2.imwrite(os.path.join(FN_path,'{}_{}_full_{}.jpg'.format(iter_, phase, batch)), full_image)
             elif (label_name == 'change') & (pred_name == 'change'):
                 TN_path = os.path.join(img_dir, 'tn')
                 pathlib.Path(TN_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(TN_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+                #cv2.imwrite(os.path.join(TN_path,'{}_{}_base_{}.jpg'.format(iter_, phase, batch)), np_base*255)
+                #cv2.imwrite(os.path.join(TN_path,'{}_{}_fu_{}.jpg'.format(iter_, phase, batch)), np_fu*255)
+                #cv2.imwrite(os.path.join(TN_path,'{}_{}_base_am_{}.jpg'.format(iter_, phase, batch)), base_cam*255)
+                #cv2.imwrite(os.path.join(TN_path,'{}_{}_fu_am_{}.jpg'.format(iter_, phase, batch)), fu_cam*255)
+                cv2.imwrite(os.path.join(TN_path,'{}_{}_full_{}.jpg'.format(iter_, phase, batch)), full_image)
             else:
                 FP_path = os.path.join(img_dir, 'fp')
                 pathlib.Path(FP_path).mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_base.jpg'.format(iter_, phase)), np_base*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu.jpg'.format(iter_, phase)), np_fu*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_base_am.jpg'.format(iter_, phase)), base_cam*255)
-                cv2.imwrite(os.path.join(FP_path,'{}_{}_fu_am.jpg'.format(iter_, phase)), fu_cam*255)
+                #cv2.imwrite(os.path.join(FP_path,'{}_{}_base_{}.jpg'.format(iter_, phase, batch)), np_base*255)
+                #cv2.imwrite(os.path.join(FP_path,'{}_{}_fu_{}.jpg'.format(iter_, phase, batch)), np_fu*255)
+                #cv2.imwrite(os.path.join(FP_path,'{}_{}_base_am_{}.jpg'.format(iter_, phase, batch)), base_cam*255)
+                #cv2.imwrite(os.path.join(FP_path,'{}_{}_fu_am_{}.jpg'.format(iter_, phase, batch)), fu_cam*255)
+                cv2.imwrite(os.path.join(FP_path,'{}_{}_full_{}.jpg'.format(iter_, phase, batch)), full_image)
