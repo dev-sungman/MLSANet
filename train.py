@@ -82,7 +82,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             running_disease += disease_loss.item()
             running_loss += overall_loss.item()
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
 
             optimizer.zero_grad()
             overall_loss.backward()
@@ -96,7 +96,6 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
                 writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
                 writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
-                
 
             iter_ += 1
             overall_iter += 1

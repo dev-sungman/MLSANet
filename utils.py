@@ -39,25 +39,25 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
     if len(acts) > 0:
         for batch in range(visual_num): #batch
             np_base = base[batch,0,:,:].cpu().detach().numpy()
-            np_base = cv2.resize(np_base, (256, 256))
+            np_base = cv2.resize(np_base, (512, 512))
             np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
             np_base = (np_base*0.4)+0.2
             
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
-            np_fu = cv2.resize(np_fu, (256, 256))
+            np_fu = cv2.resize(np_fu, (512, 512))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
             np_fu = (np_fu*0.4) + 0.2
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
 
-            np_base_act = cv2.resize(np_base_act, (256,256))
+            np_base_act = cv2.resize(np_base_act, (512,512))
             np_base_act -= 0.5
             np_base_act[np_base_act<0] = 0.
             np_base_act -= np.min(np_base_act)
             np_base_act /= np.max(np_base_act)
 
-            np_fu_act = cv2.resize(np_fu_act, (256,256))
+            np_fu_act = cv2.resize(np_fu_act, (512,512))
             np_fu_act -= 0.5
             np_fu_act[np_fu_act<0] = 0.
             np_fu_act -= np.min(np_fu_act)
@@ -77,11 +77,11 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             label_name = label_names[labels[batch]]
             pred_name = label_names[preds[batch]]
             
-            full_image = np.zeros((512,512,3))
-            full_image[:256, :256, :] = np_base*255
-            full_image[256:, :256, :] = np_fu*255
-            full_image[:256, 256:, :] = base_cam*255
-            full_image[256:, 256:, :] = fu_cam*255
+            full_image = np.zeros((1024,1024,3))
+            full_image[:512, :512, :] = np_base*255
+            full_image[512:, :512, :] = np_fu*255
+            full_image[:512, 512:, :] = base_cam*255
+            full_image[512:, 512:, :] = fu_cam*255
 
             if (label_name == 'nochange') & (pred_name == 'nochange'):
                 TP_path = os.path.join(img_dir, 'tp')
