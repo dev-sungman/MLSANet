@@ -38,7 +38,7 @@ class ClassPairDataset(Dataset):
         
         if mode == 'train':
             self.transform = transforms.Compose([
-                transforms.Resize(540),
+                transforms.Resize(640),
                 transforms.RandomCrop(512),
                 transforms.RandomApply([
                     transforms.ColorJitter(
