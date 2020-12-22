@@ -24,23 +24,21 @@ import cv2
 def ACM_loss(logit):
     return 2-(2*logit)
 
-def train(args, data_loader, test_loader, model, device, writer, log_dir, checkpoint_dir):
+def train(args, data_loader, test_loader, model, optimizer, scheduler, device, writer, log_dir, checkpoint_dir):
     
     model.train()
-    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[3, 5, 7]) 
     correct = 0
     total = 0
     
-    overall_iter = 0
+    overall_iter = args.start_iter
     img_dir = os.path.join(log_dir, 'imgs')
     pathlib.Path(img_dir).mkdir(parents=True, exist_ok=True)
 
-    for epoch in range(args.epochs):
+    for epoch in range(args.start_epoch, args.epochs):
         # NEED TO UPDATE DATSETS. 
         iter_ = 0 
         running_loss = 0
-        running_orth = 0
+        running_matching = 0
         running_change = 0
         running_disease = 0
 
@@ -53,7 +51,7 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             # for activation
             activation, layer_names = register_forward_hook(model)
 
-            base_embed, fu_embed, outputs, orth = model(base,fu)
+            base_embed, fu_embed, outputs, matching = model(base,fu)
             
             _, preds = outputs.max(1)
             total += change_labels.size(0)
@@ -66,23 +64,20 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             ce_criterion = nn.CrossEntropyLoss()
             change_loss = ce_criterion(outputs, change_labels)
 
-            # orthogonal loss
-            orth_loss = ACM_loss(orth)
+            # matching loss
+            matching_loss = ACM_loss(matching)
 
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
             
-            if epoch < 3:
-                overall_loss = disease_loss
-            else:
-                overall_loss = change_loss + disease_loss + orth_loss
+            overall_loss = (args.change_weight * change_loss) + (args.disease_weight * disease_loss) + (args.matching_weight * matching_loss)
             
             running_change += change_loss.item()
-            running_orth += orth_loss.item()
+            running_matching += matching_loss.item()
             running_disease += disease_loss.item()
             running_loss += overall_loss.item()
 
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
+            #torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
 
             optimizer.zero_grad()
             overall_loss.backward()
@@ -91,9 +86,9 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
                     lr = param_group['lr']
-                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Orth loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_orth/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
+                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Matching loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_matching/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
                 writer.add_scalar('change_loss', running_change/iter_, overall_iter)
-                writer.add_scalar('orth_loss', running_orth/iter_, overall_iter)
+                writer.add_scalar('matching_loss', running_matching/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
                 writer.add_scalar('train_acc', 100.*correct/total, overall_iter)
 
@@ -102,7 +97,12 @@ def train(args, data_loader, test_loader, model, device, writer, log_dir, checkp
         
         scheduler.step()
         test(args, test_loader, model, device, writer, log_dir, checkpoint_dir, overall_iter)
-        torch.save(model.state_dict(), os.path.join(checkpoint_dir, str(overall_iter)) + '.pth')
+        torch.save({
+            'epoch' : epoch + 1,
+            'iter' : overall_iter,
+            'state_dict' : model.state_dict(),
+            'optimizer' : optimizer.state_dict(),
+            }, os.path.join(checkpoint_dir, str(overall_iter)) + '.pth')
 
 
 def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter_):
@@ -179,21 +179,24 @@ def main(args):
 
     # select network
     print('[*] build network...')
-    #net = acm_resnet50(num_classes=512)
-    net = acm_resnet152(num_classes=512)
+    model = acm_resnet152(num_classes=512)
+    
+    optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[1, 2, 3, 4, 5, 6, 7]) 
     
     if args.resume is True:
-        net.load_state_dict(torch.load(args.pretrained))
+        checkpoint = torch.load(args.pretrained)
+        args.start_epoch = checkpoint['epoch']
+        args.start_iter = checkpoint['iter']
+        model.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
 
-    if torch.cuda.device_count() > 1 and device=='cuda':
-        net = nn.DataParallel(net)
-    
-    net = net.to(device)
+    model = model.to(device)
 
     # training
     print('[*] start training...')
     summary_writer = SummaryWriter(log_dir)
-    train(args, train_loader, test_loader, net, device, summary_writer, log_dir, checkpoint_dir)
+    train(args, train_loader, test_loader, model, optimizer, scheduler, device, summary_writer, log_dir, checkpoint_dir)
 
 
 if __name__ == '__main__':
