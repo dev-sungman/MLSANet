@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import cv2
 
-def test(args, data_loader, model, device, log_dir, checkpoint_dir):
+def test(args, data_loader, model, device, log_dir):
     print('[*] Test Phase')
     model.eval()
     
@@ -69,16 +69,13 @@ def main(args):
 
     # path setting
     pathlib.Path(args.log_dir).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(args.checkpoint_dir).mkdir(parents=True, exist_ok=True)
 
     today = str(datetime.today()).split(' ')[0] + '_' + str(time.strftime('%H%M%S'))
     folder_name = '{}_{}_{}'.format(today, args.message, args.dataset)
     
     log_dir = os.path.join(args.log_dir, folder_name)
-    checkpoint_dir = os.path.join(args.checkpoint_dir, folder_name)
 
     pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
-    pathlib.Path(checkpoint_dir).mkdir(parents=True, exist_ok=True)
     
     # for log
     f = open(os.path.join(log_dir,'arguments.txt'), 'w')
@@ -90,20 +87,17 @@ def main(args):
 
     test_datasets = ClassPairDataset(args.test_path, dataset=args.dataset, mode='test')
 
-    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=4, pin_memory=True, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True, shuffle=True)
 
     # select network
     print('[*] build network...')
-    #net = acm_resnet50(num_classes=512)
-    net = acm_resnet152(num_classes=512)
-    net.load_state_dict(torch.load(args.pretrained))
-
-    if torch.cuda.device_count() > 1 and device=='cuda':
-        net = nn.DataParallel(net)
+    model = acm_resnet152(num_classes=512)
+    checkpoint = torch.load(args.pretrained)
+    model.load_state_dict(checkpoint['state_dict'])
     
-    net = net.to(device)
+    model = model.cuda()
 
-    test(args, test_loader, net, device, log_dir, checkpoint_dir)
+    test(args, test_loader, model, device, log_dir)
 
 if __name__ == '__main__':
     argv = parse_arguments(sys.argv[1:])

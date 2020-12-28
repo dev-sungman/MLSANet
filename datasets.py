@@ -14,6 +14,9 @@ from config import parse_arguments
 from PIL import Image
 
 import json
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
 
 class ClassPairDataset(Dataset):
     def __init__(self, input_path, dataset, mode, transform=None):
@@ -37,8 +40,33 @@ class ClassPairDataset(Dataset):
                 json.dump(self.samples, f)
         
         if mode == 'train':
+            self.transform = A.Compose([
+                A.RandomCrop(512, 512),
+                A.OneOf([
+                    A.MedianBlur(blur_limit=3, p=0.1),
+                    A.MotionBlur(p=0.2),
+                    A.IAASharpen(p=0.2),
+                    ], p=0.2),
+                A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=10, p=0.2),
+                A.OneOf([
+                    A.OpticalDistortion(p=0.3),
+                    A.GridDistortion(p=0.1),
+                    ], p=0.2),
+                A.OneOf([
+                    A.CLAHE(clip_limit=4.0),
+                    A.Equalize(),
+                    ], p=0.2),
+                A.OneOf([
+                    A.GaussNoise(p=0.2),
+                    A.MultiplicativeNoise(p=0.2),
+                    ], p=0.2),
+                A.HueSaturationValue(hue_shift_limit=0, sat_shift_limit=0, val_shift_limit=0.1, p=0.3),
+                A.Normalize(mean=(0.4,), std=(0.2,)),
+                ToTensorV2(),
+                ])
+            '''
             self.transform = transforms.Compose([
-                transforms.Resize(640),
+                transforms.Resize(540),
                 transforms.RandomCrop(512),
                 transforms.RandomApply([
                     transforms.ColorJitter(
@@ -58,14 +86,20 @@ class ClassPairDataset(Dataset):
                     transforms.RandomErasing(p=0.1, scale=(0.01,0.05))
                     ], p=0.2),
                 ])
-
+            '''
         else:
+            self.transform = A.Compose([
+                A.Resize(512, 512),
+                A.Normalize(mean=(0.4,), std=(0.2,)),
+                ToTensorV2(),
+                ])
+            '''
             self.transform = transforms.Compose([
                 transforms.Resize(512),
                 transforms.ToTensor(),
-                transforms.Normalize((0.2,), (0.4,)),
+                transforms.Normalize((0.4,), (0.2,)),
                 ])
-    
+            '''
     def _find_disease_label(self, exam_id):
         if exam_id in self.disease_label['normal']:
             return 0 #normal
@@ -169,9 +203,9 @@ class ClassPairDataset(Dataset):
         return samples
 
     def __getitem__(self, idx):
-        base_img = self.transform(Image.open(self.samples['imgs'][idx][0]))
+        base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
         base_img = self._catch_exception(base_img)
-        pair_img = self.transform(Image.open(self.samples['imgs'][idx][1]))
+        pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
         pair_img = self._catch_exception(pair_img)
 
         change_labels = self.samples['change_labels'][idx]
