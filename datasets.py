@@ -40,8 +40,8 @@ class ClassPairDataset(Dataset):
                 json.dump(self.samples, f)
         
         if mode == 'train':
-            '''
             self.transform = A.Compose([
+                A.Resize(640, 640),
                 A.RandomCrop(512, 512),
                 A.OneOf([
                     A.MedianBlur(blur_limit=3, p=0.1),
@@ -65,40 +65,11 @@ class ClassPairDataset(Dataset):
                 A.Normalize(mean=(0.4,), std=(0.2,)),
                 ToTensorV2(),
                 ])
-            '''
-            self.transform = transforms.Compose([
-                transforms.Resize(540),
-                transforms.RandomCrop(512),
-                transforms.RandomApply([
-                    transforms.ColorJitter(
-                        brightness=(0.7, 1.3),
-                        contrast=(0.7, 1.3),
-                        saturation=(0.7, 1.3),
-                        hue=(-0.1, 0.1))
-                    ], p=0.2),
-                transforms.RandomApply([
-                    transforms.RandomRotation(10),
-                    transforms.RandomPerspective(),
-                    transforms.RandomAffine(5)
-                    ], p=0.2),
-                transforms.ToTensor(),
-                transforms.Normalize((0.2,), (0.4,)),
-                transforms.RandomApply([
-                    transforms.RandomErasing(p=0.1, scale=(0.01,0.05))
-                    ], p=0.2),
-                ])
         else:
-            '''
             self.transform = A.Compose([
                 A.Resize(512, 512),
                 A.Normalize(mean=(0.4,), std=(0.2,)),
                 ToTensorV2(),
-                ])
-            '''
-            self.transform = transforms.Compose([
-                transforms.Resize(512),
-                transforms.ToTensor(),
-                transforms.Normalize((0.2,), (0.4,)),
                 ])
     def _find_disease_label(self, exam_id):
         if exam_id in self.disease_label['normal']:
@@ -203,11 +174,9 @@ class ClassPairDataset(Dataset):
         return samples
 
     def __getitem__(self, idx):
-        base_img = self.transform((Image.open(self.samples['imgs'][idx][0])))
-        #base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
+        base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
         base_img = self._catch_exception(base_img)
-        pair_img = self.transform(Image.open(self.samples['imgs'][idx][1]))
-        #pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
+        pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
         pair_img = self._catch_exception(pair_img)
 
         change_labels = self.samples['change_labels'][idx]

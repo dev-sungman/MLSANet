@@ -23,6 +23,52 @@ import cv2
 import json
 import itertools
 
+def save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
+    tp, fn, fp, tn = tp.item(), fn.item(), fp.item(), tn.item()
+    results_dict = {}
+    results_dict['tn'] = tn
+    results_dict['tp'] = tp
+    results_dict['fn'] = fn
+    results_dict['fp'] = fp
+    results_dict['specificity'] = tn/(tn+fp)
+    results_dict['sensitivity'] = tp/(tp+fn)
+    results_dict['ppv'] = tp/(tp+fp)
+    results_dict['npv'] = tn/(tn+fn)
+    results_dict['acc'] = 100.*correct/total
+
+    print('tn, fp, fn, tp: ', tn, fp, fn, tp)
+    print('specificity: ', tn/(tn+fp))
+    print('sensitivity: ', tp/(tp+fn))
+    print('positive predictive value: ', tp/(tp+fp))
+    print('negative predictive value: ', tn/(tn+fn))
+    print('test_acc: ', 100.*correct/total)
+    
+    with open(os.path.join(log_dir, 'results.json'), 'w') as f:
+        json.dumps(results_dict, f)
+
+def save_roc_auc_curve(overall_gt, overall_output)
+    ### ROC, AUC
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    np_gt = np.array(overall_gt)
+    np_output = np.array(overall_output)
+    fpr, tpr, _ = roc_curve(np_gt, np_output, pos_label=1)
+    roc_auc = auc(fpr, tpr)
+    
+    plt.figure()
+    lw = 2
+    plt.plot(fpr, tpr, color='darkorange',
+                lw=lw, label='ROC curve (area = %0.2f)' %roc_auc)
+    plt.plot([0,1], [0,1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    plt.title('ROC')
+    plt.legend(loc='lower right')
+    plt.savefig(os.path.join(log_dir, 'roc_auc.png'))
+
 def save_confusion_matrix(cm, target_names, log_dir, title='CFMatrix', cmap=None, normalize=True):
     acc = np.trace(cm) / float(np.sum(cm))
     misclass = 1 - acc
@@ -30,7 +76,7 @@ def save_confusion_matrix(cm, target_names, log_dir, title='CFMatrix', cmap=None
     if cmap is None:
         cmap = plt.get_cmap('Blues')
 
-    plt.figure(figsize=(8,6))
+    plt.figure(figsize=(12,10))
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
     plt.title(title)
     plt.colorbar()
@@ -102,51 +148,9 @@ def test(args, data_loader, model, device, log_dir):
         iter_ += 1
 
     tp, fn, fp, tn = confusion_matrix(overall_gt, overall_pred).ravel()
-    tp, fn, fp, tn = tp.item(), fn.item(), fp.item(), tn.item()
-
-    results_dict = {}
-    results_dict['tn'] = tn
-    results_dict['tp'] = tp
-    results_dict['fn'] = fn
-    results_dict['fp'] = fp
-    results_dict['specificity'] = tn/(tn+fp)
-    results_dict['sensitivity'] = tp/(tp+fn)
-    results_dict['ppv'] = tp/(tp+fp)
-    results_dict['npv'] = tn/(tn+fn)
-    results_dict['acc'] = 100.*correct/total
-
-    print('tn, fp, fn, tp: ', tn, fp, fn, tp)
-    print('specificity: ', tn/(tn+fp))
-    print('sensitivity: ', tp/(tp+fn))
-    print('positive predictive value: ', tp/(tp+fp))
-    print('negative predictive value: ', tn/(tn+fn))
-    print('test_acc: ', 100.*correct/total)
+    save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['No-Change','Change'], log_dir)
-    with open(os.path.join(log_dir, 'results.json'), 'w') as f:
-        json.dumps(results_dict, f)
-
-
-    ### ROC, AUC
-    fpr = dict()
-    tpr = dict()
-    roc_auc = dict()
-    np_gt = np.array(overall_gt)
-    np_output = np.array(overall_output)
-    fpr, tpr, _ = roc_curve(np_gt, np_output, pos_label=1)
-    roc_auc = auc(fpr, tpr)
-    
-    plt.figure()
-    lw = 2
-    plt.plot(fpr, tpr, color='darkorange',
-                lw=lw, label='ROC curve (area = %0.2f)' %roc_auc)
-    plt.plot([0,1], [0,1], color='navy', lw=lw, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('FPR')
-    plt.ylabel('TPR')
-    plt.title('ROC')
-    plt.legend(loc='lower right')
-    plt.savefig(os.path.join(log_dir, 'roc_auc.png'))
+    save_roc_auc_curve(overall_gt, overall_output)
         
 
 def main(args):
