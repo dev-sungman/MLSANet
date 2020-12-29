@@ -1,6 +1,5 @@
-import os
 import sys
-
+import os
 import numpy as np
 from config import parse_arguments
 from datasets import ClassPairDataset
@@ -17,7 +16,48 @@ import pathlib
 from datetime import datetime
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import roc_auc_score
 import cv2
+
+import json
+import itertools
+
+def save_confusion_matrix(cm, target_names, log_dir, title='CFMatrix', cmap=None, normalize=True):
+    acc = np.trace(cm) / float(np.sum(cm))
+    misclass = 1 - acc
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8,6))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+                    horizontalalignment="center",
+                    color="white" if cm[i,j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                    horizontalalignment="center",
+                    color="white" if cm[i,j] > thresh else "black")
+    
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\n accuracy={:0.4f}'.format(acc))
+    plt.savefig(os.path.join(log_dir, 'confusion_matrix.png'))
 
 def test(args, data_loader, model, device, log_dir):
     print('[*] Test Phase')
@@ -28,7 +68,8 @@ def test(args, data_loader, model, device, log_dir):
     
     img_dir = os.path.join(log_dir, 'imgs')
     pathlib.Path(img_dir).mkdir(parents=True, exist_ok=True)
-
+    
+    overall_output = []
     overall_pred = []
     overall_gt = []
     iter_ = 0
@@ -41,10 +82,16 @@ def test(args, data_loader, model, device, log_dir):
         activation, layer_names = register_forward_hook(model)
         
         _, _, outputs, _ = model(base,fu)
+        outputs = F.softmax(outputs, dim=1)
         _, preds = outputs.max(1)
+        
+        new_labels = []
+        for i in range(labels.shape[0]):
+           new_labels.append(outputs[i, 1].cpu().detach().item())
         
         preds_cpu = preds.cpu().detach().numpy().tolist()
         labels_cpu = labels.cpu().detach().numpy().tolist()
+        overall_output += new_labels
         overall_pred += preds_cpu
         overall_gt += labels_cpu
 
@@ -55,12 +102,52 @@ def test(args, data_loader, model, device, log_dir):
         iter_ += 1
 
     tp, fn, fp, tn = confusion_matrix(overall_gt, overall_pred).ravel()
+    tp, fn, fp, tn = tp.item(), fn.item(), fp.item(), tn.item()
+
+    results_dict = {}
+    results_dict['tn'] = tn
+    results_dict['tp'] = tp
+    results_dict['fn'] = fn
+    results_dict['fp'] = fp
+    results_dict['specificity'] = tn/(tn+fp)
+    results_dict['sensitivity'] = tp/(tp+fn)
+    results_dict['ppv'] = tp/(tp+fp)
+    results_dict['npv'] = tn/(tn+fn)
+    results_dict['acc'] = 100.*correct/total
+
     print('tn, fp, fn, tp: ', tn, fp, fn, tp)
     print('specificity: ', tn/(tn+fp))
     print('sensitivity: ', tp/(tp+fn))
     print('positive predictive value: ', tp/(tp+fp))
     print('negative predictive value: ', tn/(tn+fn))
     print('test_acc: ', 100.*correct/total)
+    save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['No-Change','Change'], log_dir)
+    with open(os.path.join(log_dir, 'results.json'), 'w') as f:
+        json.dumps(results_dict, f)
+
+
+    ### ROC, AUC
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    np_gt = np.array(overall_gt)
+    np_output = np.array(overall_output)
+    fpr, tpr, _ = roc_curve(np_gt, np_output, pos_label=1)
+    roc_auc = auc(fpr, tpr)
+    
+    plt.figure()
+    lw = 2
+    plt.plot(fpr, tpr, color='darkorange',
+                lw=lw, label='ROC curve (area = %0.2f)' %roc_auc)
+    plt.plot([0,1], [0,1], color='navy', lw=lw, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    plt.title('ROC')
+    plt.legend(loc='lower right')
+    plt.savefig(os.path.join(log_dir, 'roc_auc.png'))
+        
 
 def main(args):
     # 0. device check & pararrel

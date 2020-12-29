@@ -40,6 +40,7 @@ class ClassPairDataset(Dataset):
                 json.dump(self.samples, f)
         
         if mode == 'train':
+            '''
             self.transform = A.Compose([
                 A.RandomCrop(512, 512),
                 A.OneOf([
@@ -86,8 +87,8 @@ class ClassPairDataset(Dataset):
                     transforms.RandomErasing(p=0.1, scale=(0.01,0.05))
                     ], p=0.2),
                 ])
-            '''
         else:
+            '''
             self.transform = A.Compose([
                 A.Resize(512, 512),
                 A.Normalize(mean=(0.4,), std=(0.2,)),
@@ -97,9 +98,8 @@ class ClassPairDataset(Dataset):
             self.transform = transforms.Compose([
                 transforms.Resize(512),
                 transforms.ToTensor(),
-                transforms.Normalize((0.4,), (0.2,)),
+                transforms.Normalize((0.2,), (0.4,)),
                 ])
-            '''
     def _find_disease_label(self, exam_id):
         if exam_id in self.disease_label['normal']:
             return 0 #normal
@@ -203,9 +203,11 @@ class ClassPairDataset(Dataset):
         return samples
 
     def __getitem__(self, idx):
-        base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
+        base_img = self.transform((Image.open(self.samples['imgs'][idx][0])))
+        #base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
         base_img = self._catch_exception(base_img)
-        pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
+        pair_img = self.transform(Image.open(self.samples['imgs'][idx][1]))
+        #pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
         pair_img = self._catch_exception(pair_img)
 
         change_labels = self.samples['change_labels'][idx]
