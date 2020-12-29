@@ -9,7 +9,7 @@ def parse_arguments(argv):
     
     parser.add_argument('--start_epoch', type=int, default = 0)
     parser.add_argument('--start_iter', type=int, default=0)
-    parser.add_argument('--epochs', type=int, default=1000, help="number of epochs")
+    parser.add_argument('--epochs', type=int, default=200, help="number of epochs")
     parser.add_argument('--gpu_idx', type=str, default='0')
 
     parser.add_argument('--batch_size', type=int, default=10)

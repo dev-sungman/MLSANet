@@ -45,6 +45,7 @@ def train(args, data_loader, test_loader, model, optimizer, scheduler, device, w
         for base, fu, change_labels, disease_labels in iter(data_loader):
             base = base.to(device)
             fu = fu.to(device)
+
             change_labels = change_labels.to(device)
             disease_labels = [disease_labels[0].to(device), disease_labels[1].to(device)]
 
