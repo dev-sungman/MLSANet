@@ -41,8 +41,7 @@ class ClassPairDataset(Dataset):
         
         if mode == 'train':
             self.transform = A.Compose([
-                A.Resize(640, 640),
-                A.RandomCrop(512, 512),
+                A.RandomResizedCrop(512, 512, scale=(0.8, 1.2)),
                 A.OneOf([
                     A.MedianBlur(blur_limit=3, p=0.1),
                     A.MotionBlur(p=0.2),

@@ -26,6 +26,8 @@ def register_forward_hook(model):
     return activation, layer_names
 
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
+    img_mean = 0.4
+    img_std = 0.2
     label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
@@ -51,12 +53,12 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_base = base[batch,0,:,:].cpu().detach().numpy()
             np_base = cv2.resize(np_base, (512, 512))
             np_base = cv2.cvtColor(np_base, cv2.COLOR_GRAY2BGR)
-            np_base = (np_base*0.4)+0.2
+            np_base = (np_base*img_std)+img_mean
             
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
             np_fu = cv2.resize(np_fu, (512, 512))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
-            np_fu = (np_fu*0.4) + 0.2
+            np_fu = (np_fu*img_mean) + img_std
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()

@@ -6,7 +6,8 @@ def parse_arguments(argv):
     parser.add_argument('--dataset', type=str, default='real')
     parser.add_argument('--train_path', type=str, default="/workspace/datasets/cleansing_datasets/baseline_followup_pair_4class")
     parser.add_argument('--test_path', type=str, default="/workspace/datasets/cleansing_datasets/baseline_followup_pair_4class")
-    
+    parser.add_argument('--random_seed', type=int, default=100)
+
     parser.add_argument('--start_epoch', type=int, default = 0)
     parser.add_argument('--start_iter', type=int, default=0)
     parser.add_argument('--epochs', type=int, default=200, help="number of epochs")

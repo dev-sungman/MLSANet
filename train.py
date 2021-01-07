@@ -141,6 +141,12 @@ def test(args, data_loader, model, device, writer, log_dir, checkpoint_dir, iter
 
 
 def main(args):
+    if args.random_seed is not None:
+        random.seed(args.random_seed)
+        np.random.seed(args.random_seed)
+        torch.manual_seed(args.random_seed)
+        cudnn.deterministic = True
+
     # 0. device check & pararrel
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_idx
