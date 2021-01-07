@@ -1,6 +1,6 @@
 import os
 import sys
-
+import random
 import numpy as np
 from config import parse_arguments
 from datasets import ClassPairDataset
@@ -145,7 +145,7 @@ def main(args):
         random.seed(args.random_seed)
         np.random.seed(args.random_seed)
         torch.manual_seed(args.random_seed)
-        cudnn.deterministic = True
+        torch.backends.cudnn.deterministic = True
 
     # 0. device check & pararrel
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -189,7 +189,7 @@ def main(args):
     model = acm_resnet152(num_classes=512)
     
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[1, 2, 3, 4, 5, 6, 7]) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[1, 3, 5, 7]) 
     
     if args.resume is True:
         checkpoint = torch.load(args.pretrained)
