@@ -147,9 +147,9 @@ def test(args, data_loader, model, device, log_dir):
         visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
         iter_ += 1
 
-    tp, fn, fp, tn = confusion_matrix(overall_gt, overall_pred).ravel()
+    tn, fp, fn, tp = confusion_matrix(overall_gt, overall_pred).ravel()
     save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
-    save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['No-Change','Change'], log_dir)
+    save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['Change','No-Change'], log_dir)
     save_roc_auc_curve(overall_gt, overall_output)
         
 

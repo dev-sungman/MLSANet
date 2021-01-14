@@ -22,7 +22,6 @@ def register_forward_hook(model):
     model.vis_final1.register_forward_hook(get_activation(layer_names[0]))
     model.vis_final2.register_forward_hook(get_activation(layer_names[1]))
 
-
     return activation, layer_names
 
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
@@ -40,8 +39,6 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
         act = activation[layer].squeeze()
         if len(act.shape) > 3:
             b, c, h, w = act.shape
-
-
         
             act = torch.mean(act, dim=1)
             act -= act.min(1, keepdim=True)[0]
