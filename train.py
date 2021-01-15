@@ -87,7 +87,7 @@ def train(args, data_loader, test_loader, model, optimizer, scheduler, device, w
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
                     lr = param_group['lr']
-                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Matching loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_matching/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
+                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Matching loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_matching/iter_, running_disease/iter_, running_loss/iter_, 100.*correct/total))
                 writer.add_scalar('change_loss', running_change/iter_, overall_iter)
                 writer.add_scalar('matching_loss', running_matching/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
