@@ -25,8 +25,8 @@ def register_forward_hook(model):
     return activation, layer_names
 
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
-    img_mean = 0.4
-    img_std = 0.2
+    img_mean = 0.2
+    img_std = 0.4
     label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
