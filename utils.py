@@ -61,13 +61,13 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
 
             np_base_act = cv2.resize(np_base_act, (512,512))
-            np_base_act -= 0.5
+            np_base_act -= 0.8
             np_base_act[np_base_act<0] = 0.
             np_base_act -= np.min(np_base_act)
             np_base_act /= np.max(np_base_act)
 
             np_fu_act = cv2.resize(np_fu_act, (512,512))
-            np_fu_act -= 0.5
+            np_fu_act -= 0.8
             np_fu_act[np_fu_act<0] = 0.
             np_fu_act -= np.min(np_fu_act)
             np_fu_act /= np.max(np_fu_act)

@@ -61,13 +61,13 @@ class ClassPairDataset(Dataset):
                     A.MultiplicativeNoise(p=0.2),
                     ], p=0.2),
                 A.HueSaturationValue(hue_shift_limit=0, sat_shift_limit=0, val_shift_limit=0.1, p=0.3),
-                A.Normalize(mean=(0.4,), std=(0.2,)),
+                A.Normalize(mean=(0.2,), std=(0.4,)),
                 ToTensorV2(),
                 ])
         else:
             self.transform = A.Compose([
                 A.Resize(512, 512),
-                A.Normalize(mean=(0.4,), std=(0.2,)),
+                A.Normalize(mean=(0.2,), std=(0.4,)),
                 ToTensorV2(),
                 ])
     def _find_disease_label(self, exam_id):
