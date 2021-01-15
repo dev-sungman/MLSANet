@@ -16,6 +16,7 @@ __pycache__/
 runs/
 imgs/
 checkpoints/
+last_models/
 
 *.json
 
