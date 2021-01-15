@@ -55,7 +55,7 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
             np_fu = cv2.resize(np_fu, (512, 512))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
-            np_fu = (np_fu*img_mean) + img_std
+            np_fu = (np_fu*img_std) + img_mean
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()

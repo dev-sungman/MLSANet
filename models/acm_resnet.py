@@ -144,16 +144,16 @@ class ResNet(nn.Module):
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         
-        self.acm1 = ACMBlock(in_channels=64*4)
-        self.acm2 = ACMBlock(in_channels=128*4)
-        self.acm3 = ACMBlock(in_channels=256*4)
-        self.acm4 = ACMBlock(in_channels=512*4)
+        #self.acm1 = ACMBlock(in_channels=64*4)
+        #self.acm2 = ACMBlock(in_channels=128*4)
+        #self.acm3 = ACMBlock(in_channels=256*4)
+        #self.acm4 = ACMBlock(in_channels=512*4)
 
-        self.vis_final1 = nn.ReLU(inplace=True)
-        self.vis_final2 = nn.ReLU(inplace=True)
+        self.vis_final1 = nn.ReLU()
+        self.vis_final2 = nn.ReLU()
         
         self.change_linear = nn.Linear(1024, 2)
-        self.disease_linear = nn.Linear(512, 2)
+        #self.disease_linear = nn.Linear(512, 2)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -202,19 +202,19 @@ class ResNet(nn.Module):
         
         x1 = self.layer1(x1)
         x2 = self.layer1(x2)
-        x1, x2, orth_loss1 = self.acm1(x1, x2)
+        #x1, x2, orth_loss1 = self.acm1(x1, x2)
         
         x1 = self.layer2(x1)
         x2 = self.layer2(x2)
-        x1, x2, orth_loss2 = self.acm2(x1, x2)
+        #x1, x2, orth_loss2 = self.acm2(x1, x2)
         
         x1 = self.layer3(x1)
         x2 = self.layer3(x2)
-        x1, x2, orth_loss3 = self.acm3(x1, x2)
+        #x1, x2, orth_loss3 = self.acm3(x1, x2)
         
         x1 = self.layer4(x1)
         x2 = self.layer4(x2)
-        x1, x2, orth_loss4 = self.acm4(x1, x2)
+        #x1, x2, orth_loss4 = self.acm4(x1, x2)
         
         vis1 = self.vis_final1(x1)
         vis2 = self.vis_final2(x2)
@@ -231,12 +231,13 @@ class ResNet(nn.Module):
         cat = torch.cat((x1, x2), 1)
         out = self.change_linear(cat)
         
-        orth_score = (orth_loss1 + orth_loss2 + orth_loss3 + orth_loss4) / 4
+        #orth_score = (orth_loss1 + orth_loss2 + orth_loss3 + orth_loss4) / 4
         
-        x1 = self.disease_linear(x1)
-        x2 = self.disease_linear(x2)
+        #x1 = self.disease_linear(x1)
+        #x2 = self.disease_linear(x2)
 
-        return x1, x2, out, orth_score
+        #return x1, x2, out, orth_score
+        return out
 
     def forward(self, x1, x2):
         return self._forward_impl(x1, x2)
