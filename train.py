@@ -70,15 +70,13 @@ def train(args, data_loader, test_loader, model, optimizer, scheduler, device, w
 
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
-            
-            overall_loss = (args.change_weight * change_loss) + (args.disease_weight * disease_loss) + (args.matching_weight * matching_loss)
+            overall_loss = change_loss + disease_loss + (0.01*matching_loss)
+            #overall_loss = (args.change_weight * change_loss) + (args.disease_weight * disease_loss) + (args.matching_weight * matching_loss)
             
             running_change += change_loss.item()
             running_matching += matching_loss.item()
             running_disease += disease_loss.item()
             running_loss += overall_loss.item()
-
-            #torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
 
             optimizer.zero_grad()
             overall_loss.backward()
@@ -87,7 +85,7 @@ def train(args, data_loader, test_loader, model, optimizer, scheduler, device, w
             if (iter_ % args.print_freq == 0) & (iter_ != 0):
                 for param_group in optimizer.param_groups:
                     lr = param_group['lr']
-                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Matching loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_matching/iter_, running_loss/iter_, running_disease/iter_, 100.*correct/total))
+                print('Epoch: {:2d}, LR: {:5f}, Iter: {:5d}, Cls loss: {:5f}, Matching loss: {:5f}, Disease loss: {:5f}, Overall loss: {:5f}, Acc: {:4f}'.format(epoch, lr, iter_, running_change/iter_, running_matching/iter_, running_disease/iter_, running_loss/iter_, 100.*correct/total))
                 writer.add_scalar('change_loss', running_change/iter_, overall_iter)
                 writer.add_scalar('matching_loss', running_matching/iter_, overall_iter)
                 writer.add_scalar('disease_loss', running_disease/iter_, overall_iter)
@@ -189,7 +187,7 @@ def main(args):
     model = acm_resnet152(num_classes=512)
     
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[1, 3, 5, 7]) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[3, 5, 7]) 
     
     if args.resume is True:
         checkpoint = torch.load(args.pretrained)

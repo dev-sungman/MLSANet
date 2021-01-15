@@ -149,8 +149,8 @@ class ResNet(nn.Module):
         self.acm3 = ACMBlock(in_channels=256*4)
         self.acm4 = ACMBlock(in_channels=512*4)
 
-        self.vis_final1 = nn.ReLU(inplace=True)
-        self.vis_final2 = nn.ReLU(inplace=True)
+        self.vis_final1 = nn.ReLU()
+        self.vis_final2 = nn.ReLU()
         
         self.change_linear = nn.Linear(1024, 2)
         self.disease_linear = nn.Linear(512, 2)
