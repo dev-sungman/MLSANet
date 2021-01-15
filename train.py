@@ -70,15 +70,13 @@ def train(args, data_loader, test_loader, model, optimizer, scheduler, device, w
 
             # disease loss
             disease_loss = ce_criterion(base_embed, disease_labels[0]) + ce_criterion(fu_embed, disease_labels[1])
-            
-            overall_loss = (args.change_weight * change_loss) + (args.disease_weight * disease_loss) + (args.matching_weight * matching_loss)
+            overall_loss = change_loss + disease_loss + (0.01*matching_loss)
+            #overall_loss = (args.change_weight * change_loss) + (args.disease_weight * disease_loss) + (args.matching_weight * matching_loss)
             
             running_change += change_loss.item()
             running_matching += matching_loss.item()
             running_disease += disease_loss.item()
             running_loss += overall_loss.item()
-
-            #torch.nn.utils.clip_grad_norm_(model.parameters(), 2.0)
 
             optimizer.zero_grad()
             overall_loss.backward()
@@ -189,7 +187,7 @@ def main(args):
     model = acm_resnet152(num_classes=512)
     
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[1, 3, 5, 7]) 
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, gamma=0.8, milestones=[3, 5, 7]) 
     
     if args.resume is True:
         checkpoint = torch.load(args.pretrained)
