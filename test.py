@@ -125,14 +125,16 @@ def test(args, data_loader, model, device, log_dir):
     overall_pred = []
     overall_gt = []
     iter_ = 0
-
+    
+    '''
     overall_vector = np.zeros((1620, 2), np.float32)
     overall_label = np.zeros((1620), np.uint8)
+    tsne = TSNE(n_components=2)
+    pca = PCA(n_components=2)
+    '''
 
     idx = 0
     
-    tsne = TSNE(n_components=2)
-    #pca = PCA(n_components=2)
     
     for base, fu, labels, _ in iter(data_loader):
         base = base.to(device)
