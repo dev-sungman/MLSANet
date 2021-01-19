@@ -142,7 +142,7 @@ def test(args, data_loader, model, device, log_dir):
         # for activation
         activation, layer_names = register_forward_hook(model)
         
-        _, _, outputs, _, embed_change = model(base,fu)
+        _, _, outputs, _ = model(base,fu)
         
 
         outputs = F.softmax(outputs, dim=1)
@@ -160,7 +160,7 @@ def test(args, data_loader, model, device, log_dir):
 
         total += labels.size(0)
         correct += preds.eq(labels).sum().item()
-
+        '''
         #####TODO: plot the embedding vector
         scaler = StandardScaler()
         normalized_vector = scaler.fit_transform(embed_change.cpu().detach().numpy()) 
@@ -170,20 +170,20 @@ def test(args, data_loader, model, device, log_dir):
         embed_vector = tsne.fit_transform(normalized_vector)
         overall_vector[idx:idx+base.shape[0],:] = embed_vector
         overall_label[idx:idx+base.shape[0]] = labels_cpu
-        
+        '''
         ##### Activation map
         visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
         iter_ += 1
 
         idx += base.shape[0]
-
+    '''
     ##### Draw change embedding vector
     fig = plt.figure(figsize=(16,9))
     ax.scatter(overall_vector[:,0], overall_vector[:,1], c=overall_label)
     plt.xlim(-1000, 1000)
     plt.ylim(-1000, 1000)
     plt.savefig(os.path.join(log_dir, 'embedding_vec.jpg'))
-
+    '''
     tn, fp, fn, tp = confusion_matrix(overall_gt, overall_pred).ravel()
     save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['Change','No-Change'], log_dir)
