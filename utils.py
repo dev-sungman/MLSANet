@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import pathlib
 import torch
+import torch.nn.functional as F
 import os
 
 def register_forward_hook(model):
@@ -25,8 +26,8 @@ def register_forward_hook(model):
     return activation, layer_names
 
 def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, preds, labels, base, fu):
-    img_mean = 0.4
-    img_std = 0.2
+    img_mean = 0.2
+    img_std = 0.4
     label_names = ['change', 'nochange']
     acts = []
     num_layers = len(layer_names)
@@ -39,7 +40,6 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
         act = activation[layer].squeeze()
         if len(act.shape) > 3:
             b, c, h, w = act.shape
-        
             act = torch.mean(act, dim=1)
             act -= act.min(1, keepdim=True)[0]
             act /= act.max(1, keepdim=True)[0]
@@ -55,19 +55,19 @@ def visualize_activation_map(activation, layer_names, iter_, phase, img_dir, pre
             np_fu = fu[batch,0,:,:].cpu().detach().numpy()
             np_fu = cv2.resize(np_fu, (512, 512))
             np_fu = cv2.cvtColor(np_fu, cv2.COLOR_GRAY2BGR)
-            np_fu = (np_fu*img_mean) + img_std
+            np_fu = (np_fu*img_std) + img_mean
 
             np_base_act = acts[0][batch,:,:].cpu().detach().numpy()
             np_fu_act = acts[1][batch,:,:].cpu().detach().numpy()
 
             np_base_act = cv2.resize(np_base_act, (512,512))
-            np_base_act -= 0.5
+            np_base_act -= 0.8
             np_base_act[np_base_act<0] = 0.
             np_base_act -= np.min(np_base_act)
             np_base_act /= np.max(np_base_act)
 
             np_fu_act = cv2.resize(np_fu_act, (512,512))
-            np_fu_act -= 0.5
+            np_fu_act -= 0.8
             np_fu_act[np_fu_act<0] = 0.
             np_fu_act -= np.min(np_fu_act)
             np_fu_act /= np.max(np_fu_act)

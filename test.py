@@ -5,6 +5,9 @@ from config import parse_arguments
 from datasets import ClassPairDataset
 from models.acm_resnet import acm_resnet50, acm_resnet152
 from utils import register_forward_hook, visualize_activation_map
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.manifold import TSNE
 
 import torch
 import torch.nn as nn
@@ -15,6 +18,7 @@ import time
 import pathlib
 from datetime import datetime
 import matplotlib.pyplot as plt
+
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import roc_auc_score
@@ -23,7 +27,8 @@ import cv2
 import json
 import itertools
 
-def save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
+
+def save_results_metric(tn, tp, fn, fp, correct, total, log_dir):
     tp, fn, fp, tn = tp.item(), fn.item(), fp.item(), tn.item()
     results_dict = {}
     results_dict['tn'] = tn
@@ -44,9 +49,9 @@ def save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     print('test_acc: ', 100.*correct/total)
     
     with open(os.path.join(log_dir, 'results.json'), 'w') as f:
-        json.dumps(results_dict, f)
+        json.dump(results_dict, f)
 
-def save_roc_auc_curve(overall_gt, overall_output)
+def save_roc_auc_curve(overall_gt, overall_output, log_dir):
     ### ROC, AUC
     fpr = dict()
     tpr = dict()
@@ -106,6 +111,7 @@ def save_confusion_matrix(cm, target_names, log_dir, title='CFMatrix', cmap=None
     plt.savefig(os.path.join(log_dir, 'confusion_matrix.png'))
 
 def test(args, data_loader, model, device, log_dir):
+
     print('[*] Test Phase')
     model.eval()
     
@@ -119,6 +125,17 @@ def test(args, data_loader, model, device, log_dir):
     overall_pred = []
     overall_gt = []
     iter_ = 0
+    
+    '''
+    overall_vector = np.zeros((1620, 2), np.float32)
+    overall_label = np.zeros((1620), np.uint8)
+    tsne = TSNE(n_components=2)
+    pca = PCA(n_components=2)
+    '''
+
+    idx = 0
+    
+    
     for base, fu, labels, _ in iter(data_loader):
         base = base.to(device)
         fu = fu.to(device)
@@ -128,6 +145,8 @@ def test(args, data_loader, model, device, log_dir):
         activation, layer_names = register_forward_hook(model)
         
         _, _, outputs, _ = model(base,fu)
+        
+
         outputs = F.softmax(outputs, dim=1)
         _, preds = outputs.max(1)
         
@@ -143,14 +162,34 @@ def test(args, data_loader, model, device, log_dir):
 
         total += labels.size(0)
         correct += preds.eq(labels).sum().item()
-
+        '''
+        #####TODO: plot the embedding vector
+        scaler = StandardScaler()
+        normalized_vector = scaler.fit_transform(embed_change.cpu().detach().numpy()) 
+        #normalized_vector = embed_change.cpu().detach().numpy()
+        #embed_vector = pca.fit(normalized_vector)
+        #embed_vector = pca.fit_transform(embed_change.cpu().detach().numpy())
+        embed_vector = tsne.fit_transform(normalized_vector)
+        overall_vector[idx:idx+base.shape[0],:] = embed_vector
+        overall_label[idx:idx+base.shape[0]] = labels_cpu
+        '''
+        ##### Activation map
         visualize_activation_map(activation, layer_names, iter_, 'test', img_dir, preds_cpu, labels_cpu, base, fu)
         iter_ += 1
 
+        idx += base.shape[0]
+    '''
+    ##### Draw change embedding vector
+    fig = plt.figure(figsize=(16,9))
+    ax.scatter(overall_vector[:,0], overall_vector[:,1], c=overall_label)
+    plt.xlim(-1000, 1000)
+    plt.ylim(-1000, 1000)
+    plt.savefig(os.path.join(log_dir, 'embedding_vec.jpg'))
+    '''
     tn, fp, fn, tp = confusion_matrix(overall_gt, overall_pred).ravel()
     save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['Change','No-Change'], log_dir)
-    save_roc_auc_curve(overall_gt, overall_output)
+    save_roc_auc_curve(overall_gt, overall_output, log_dir)
         
 
 def main(args):
@@ -179,6 +218,7 @@ def main(args):
     test_datasets = ClassPairDataset(args.test_path, dataset=args.dataset, mode='test')
 
     test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True, shuffle=True)
+    
 
     # select network
     print('[*] build network...')
