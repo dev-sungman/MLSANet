@@ -236,7 +236,7 @@ class ResNet(nn.Module):
         x1 = self.disease_linear(x1)
         x2 = self.disease_linear(x2)
 
-        return x1, x2, out, orth_score
+        return x1, x2, out, orth_score, cat
 
     def forward(self, x1, x2):
         return self._forward_impl(x1, x2)
