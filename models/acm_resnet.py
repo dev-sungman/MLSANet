@@ -152,7 +152,7 @@ class ResNet(nn.Module):
         self.vis_final1 = nn.ReLU()
         self.vis_final2 = nn.ReLU()
         
-        self.change_linear = nn.Linear(1024, 2)
+        self.change_linear = nn.Linear(512, 2)
         self.disease_linear = nn.Linear(512, 2)
 
         for m in self.modules():
@@ -228,7 +228,8 @@ class ResNet(nn.Module):
         x1 = self.fc(x1)
         x2 = self.fc(x2)
         
-        cat = torch.cat((x1, x2), 1)
+        #cat = torch.cat((x1, x2), 1)
+        cat = torch.abs(x1-x2)
         out = self.change_linear(cat)
         
         orth_score = (orth_loss1 + orth_loss2 + orth_loss3 + orth_loss4) / 4

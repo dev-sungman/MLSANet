@@ -20,7 +20,7 @@ def parse_arguments(argv):
     parser.add_argument('--log_dir', type=str, default="runs")
     parser.add_argument('--checkpoint_dir', type=str, default="checkpoints")
 
-    parser.add_argument('--print_freq', type=int, default=300)
+    parser.add_argument('--print_freq', type=int, default=1000)
     
     parser.add_argument('--backbone', type=str, default="resnet152")
     parser.add_argument('--img_folder', type=str, default='imgs') 
