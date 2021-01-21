@@ -96,8 +96,8 @@ class ACMBlock(nn.Module):
         channel_weights1 = self.global_pooling(mean_features1)
         channel_weights2 = self.global_pooling(mean_features2)
         
-        out1 = x1 + K + Q
-        out2 = x2 + K + Q
+        out1 = x1 + (K - Q)
+        out2 = x2 + (K - Q)
         
         out1 = channel_weights1 * out1
         out2 = channel_weights2 * out2
