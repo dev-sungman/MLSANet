@@ -229,6 +229,8 @@ class ResNet(nn.Module):
         x2 = self.fc(x2)
         
         #cat = torch.cat((x1, x2), 1)
+        x1 = F.normalize(x1, p=2, dim=1)
+        x2 = F.normalize(x2, p=2, dim=1)
         cat = torch.bmm(x1.view(x1.shape[0], x1.shape[1], 1), x2.view(x2.shape[0], 1, x2.shape[1]))
         diag_mask = torch.stack([torch.eye(512).cuda()]*cat.shape[0], dim=0).type(torch.BoolTensor).cuda()
         cat = cat.masked_select(diag_mask).view(x1.shape[0], -1)
