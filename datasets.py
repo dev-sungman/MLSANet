@@ -50,7 +50,6 @@ class ClassPairDataset(Dataset):
                 A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=10, p=0.2),
                 A.OneOf([
                     A.OpticalDistortion(p=0.3),
-                    A.GridDistortion(p=0.1),
                     ], p=0.2),
                 A.OneOf([
                     A.CLAHE(clip_limit=4.0),
