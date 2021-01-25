@@ -32,49 +32,15 @@ class ACMBlock(nn.Module):
         c_mean = self.avgpool(x)
         return c_mean
 
-    def get_K(self, x):
-        K = self.k_conv(x)
-
-        b, c, h, w = K.shape
-
-        K = K.view(b, c, 1, h*w)
-        K = self.normalize(K)
-        K = K.view(b, c, h, w)
-
-        K = torch.einsum('nchw,nchw->nc',[K, x])
-
-        return K
-
-    def get_Q(self, x):
-        Q = self.q_conv(x)
-
-        b, c, h, w = Q.shape
-
-        Q = Q.view(b, c, 1, h*w)
-        Q = self.normalize(Q)
-        Q = Q.view(b, c, h, w)
-
-        Q = torch.einsum('nchw,nchw->nc',[Q, x])
-
-        return Q
-    
-    def get_channel_weights(self, x):
-        mean_features = self._get_normalized_features(x)
-        normalized_features = x - mean_features
-        
-        channel_weights = self.global_pooling(mean_features)
-
-        return channel_weights
-    
-    def get_orth_loss(self, k, q):
-        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
-        orth_loss = cos(k, q)
-        orth_loss = torch.mean(orth_loss, dim=0)
-        return orth_loss
-
     def forward(self, x1, x2):
-        K = self.k_conv(x1)
-        Q = self.q_conv(x2)
+        mean_x1 = self._get_normalized_features(x1)
+        mean_x2 = self._get_normalized_features(x2)
+
+        x1_mu = x1-mean_x1
+        x2_mu = x2-mean_x2
+        
+        K = self.k_conv(x1_mu)
+        Q = self.q_conv(x2_mu)
 
         b, c, h, w = K.shape
 
@@ -86,15 +52,13 @@ class ACMBlock(nn.Module):
         Q = self.normalize(Q)
         Q = Q.view(b, c, h, w)
 
-        K = torch.einsum('nchw,nchw->nc',[K, x1])
-        Q = torch.einsum('nchw,nchw->nc',[Q, x2])
+        K = torch.einsum('nchw,nchw->nc',[K, x1_mu])
+        Q = torch.einsum('nchw,nchw->nc',[Q, x2_mu])
         K = K.view(K.shape[0], K.shape[1], 1, 1)
         Q = Q.view(Q.shape[0], Q.shape[1], 1, 1)
 
-        mean_features1 = self._get_normalized_features(x1)
-        mean_features2 = self._get_normalized_features(x2)
-        channel_weights1 = self.global_pooling(mean_features1)
-        channel_weights2 = self.global_pooling(mean_features2)
+        channel_weights1 = self.global_pooling(mean_x1)
+        channel_weights2 = self.global_pooling(mean_x2)
         
         out1 = x1 + K + Q
         out2 = x2 + K + Q
