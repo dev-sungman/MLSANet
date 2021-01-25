@@ -32,6 +32,12 @@ class ACMBlock(nn.Module):
         c_mean = self.avgpool(x)
         return c_mean
 
+    def _get_orth_loss(self, K, Q):
+        cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+        orth_loss = cos(K, Q)
+        orth_loss = torch.mean(orth_loss, dim=0)
+        return orth_loss
+    
     def forward(self, x1, x2):
         mean_x1 = self._get_normalized_features(x1)
         mean_x2 = self._get_normalized_features(x2)
