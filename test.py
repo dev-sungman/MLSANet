@@ -44,7 +44,7 @@ def save_results_metric(tn, tp, fn, fp, correct, total, log_dir):
     print('test_acc: ', 100.*correct/total)
     
     with open(os.path.join(log_dir, 'results.json'), 'w') as f:
-        json.dumps(results_dict, f)
+        json.dump(results_dict, f)
 
 def save_roc_auc_curve(overall_gt, overall_output):
     ### ROC, AUC
