@@ -217,7 +217,7 @@ def main(args):
 
     test_datasets = ClassPairDataset(args.test_path, dataset=args.dataset, mode='test')
 
-    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(test_datasets, batch_size=args.batch_size, num_workers=args.w, pin_memory=True)
     
 
     # select network
