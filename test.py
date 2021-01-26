@@ -46,7 +46,7 @@ def save_results_metric(tn, tp, fn, fp, correct, total, log_dir):
     with open(os.path.join(log_dir, 'results.json'), 'w') as f:
         json.dump(results_dict, f)
 
-def save_roc_auc_curve(overall_gt, overall_output):
+def save_roc_auc_curve(overall_gt, overall_output, log_dir):
     ### ROC, AUC
     fpr = dict()
     tpr = dict()
@@ -150,7 +150,7 @@ def test(args, data_loader, model, device, log_dir):
     tn, fp, fn, tp = confusion_matrix(overall_gt, overall_pred).ravel()
     save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     save_confusion_matrix(confusion_matrix(overall_gt, overall_pred), ['Change','No-Change'], log_dir)
-    save_roc_auc_curve(overall_gt, overall_output)
+    save_roc_auc_curve(overall_gt, overall_output, log_dir)
         
 
 def main(args):
