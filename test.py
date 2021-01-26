@@ -23,7 +23,7 @@ import cv2
 import json
 import itertools
 
-def save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
+def save_results_metric(tn, tp, fn, fp, correct, total, log_dir):
     tp, fn, fp, tn = tp.item(), fn.item(), fp.item(), tn.item()
     results_dict = {}
     results_dict['tn'] = tn
@@ -46,7 +46,7 @@ def save_results_metric(tn, tp, fn, fp, correct, total, log_dir)
     with open(os.path.join(log_dir, 'results.json'), 'w') as f:
         json.dumps(results_dict, f)
 
-def save_roc_auc_curve(overall_gt, overall_output)
+def save_roc_auc_curve(overall_gt, overall_output):
     ### ROC, AUC
     fpr = dict()
     tpr = dict()
@@ -127,7 +127,7 @@ def test(args, data_loader, model, device, log_dir):
         # for activation
         activation, layer_names = register_forward_hook(model)
         
-        _, _, outputs, _ = model(base,fu)
+        outputs = model(base,fu)
         outputs = F.softmax(outputs, dim=1)
         _, preds = outputs.max(1)
         
