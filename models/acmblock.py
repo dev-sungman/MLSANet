@@ -72,7 +72,7 @@ class ACMBlock(nn.Module):
         out1 = channel_weights1 * out1
         out2 = channel_weights2 * out2
         
-        orth_loss = self.get_orth_loss(K,Q)
+        orth_loss = self._get_orth_loss(K,Q)
 
         return out1, out2, orth_loss
 
