@@ -41,7 +41,7 @@ class ClassPairDataset(Dataset):
         
         if mode == 'train':
             self.transform = A.Compose([
-                A.RandomResizedCrop(512, 512, scale=(0.8, 1.2)),
+                A.Resize(512, 512),
                 A.OneOf([
                     A.MedianBlur(blur_limit=3, p=0.1),
                     A.MotionBlur(p=0.2),
@@ -76,6 +76,16 @@ class ClassPairDataset(Dataset):
             return 1 #abnormal
         else:
             return 2
+
+    def _check_crop_label(self, crop_label):
+        x_start, x_end, y_start, y_end = crop_label
+        x_margin = int(511-x_start)
+        y_margin = int(y_end-y_start)
+        if x_margin < 300:
+            x_start = 47
+        if y_margin < 300:
+            y_start, y_end = 55, 453
+        return [x_start, x_end, y_start, y_end]
 
     def _make_dataset(self, phase):
         if phase == 'train':
@@ -172,9 +182,14 @@ class ClassPairDataset(Dataset):
         return samples
 
     def __getitem__(self, idx):
-        base_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][0])))['image']
+        x_min, _, y_min, y_max = self._check_crop_label(self.samples['fov'][idx][0])
+        base_img = np.array(Image.open(self.samples['imgs'][idx][0]))[x_min:, y_min:y_max]
+        base_img = self.transform(image=base_img)['image']
         base_img = self._catch_exception(base_img)
-        pair_img = self.transform(image=np.array(Image.open(self.samples['imgs'][idx][1])))['image']
+
+        x_min, _, y_min, y_max = self._check_crop_label(self.samples['fov'][idx][1])
+        pair_img = np.array(Image.open(self.samples['imgs'][idx][1]))[x_min:, y_min:y_max]
+        pair_img = self.transform(image=pair_img)['image']
         pair_img = self._catch_exception(pair_img)
 
         change_labels = self.samples['change_labels'][idx]
